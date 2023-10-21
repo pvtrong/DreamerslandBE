@@ -1,2 +1,14 @@
 node_modules
 .env
+
+# Vim swap files
+*.swp
+*.lock
+
+*.swp
+*.lock
+
+# IDE / Editor
+.idea
+.vscode/*
+!.vscode/extensions.json
