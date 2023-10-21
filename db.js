@@ -6,7 +6,7 @@ const sequelize = new Sequelize(
 	process.env.DB_USER,
 	process.env.DB_PASSWORD,
 	{
-		host: '35.78.73.126',
+		host: process.env.DB_HOST,
 		dialect: 'mysql' /* 'mysql' | 'mariadb' | 'postgres' | 'mssql' */,
 	}
 );
@@ -22,11 +22,16 @@ const sequelize = new Sequelize(
 
 // Create Models
 const { TaskModel } = require('./models/Task');
-const Task = TaskModel(sequelize);
-
 const { UserModel } = require('./models/User');
+const { SaleModel } = require('./models/Sale');
+const { SeasonModel } = require('./models/Season');
+const Task = TaskModel(sequelize);
+const Sale = SaleModel(sequelize)
+const Season = SeasonModel(sequelize)
 const User = UserModel(sequelize);
 
+// establish relationships
+// Season.hasMany(Sale, { foreignKey: 'season_id' })
 if (process.env.MIGRATE_DB == 'TRUE') {
 	sequelize.sync().then(() => {
 		console.log(`All tables synced!`);
@@ -37,4 +42,6 @@ if (process.env.MIGRATE_DB == 'TRUE') {
 module.exports = {
 	Task,
 	User,
+	Sale,
+	Season
 };
