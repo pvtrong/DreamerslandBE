@@ -116,6 +116,16 @@ module.exports.searchSales = async (req, res, next) => {
       where: whereClause,
       limit: Number(limit),
       offset: offset,
+      attributes: { exclude: ["user_id", "season_id"] },
+      include: [
+        { model: Season, as: "season" }, // Bổ sung thông tin từ mối quan hệ "season"
+        {
+          model: User,
+          as: "user",
+          attributes:{ exclude:  ["token", "password"], }
+          
+        }, // Bổ sung thông tin từ mối quan hệ "user"
+      ],
     });
 
     const totalPages = Math.ceil(totalSales / limit);
