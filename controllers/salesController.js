@@ -81,14 +81,15 @@ module.exports.deleteSale = async (req, res, next) => {
 module.exports.searchSales = async (req, res, next) => {
   try {
     let { session_id, user_id, date_time, page, limit } = req.query;
-    if (isNaN(page)) {
+    if (isNaN(page) || !page || !Number.isInteger(Number(page))) {
       page = 1;
     }
-    if (isNaN(limit)) {
+    if (isNaN(limit) || !limit||!Number.isInteger(Number(limit))) {
       limit = 30;
     }
-    const offset = (page - 1) * limit;
-
+    console.log(limit ,page)
+    const offset = (Number(page) - 1) * Number(limit);
+  console.log(offset)
     const whereClause = {};
 
     if (session_id) {
@@ -113,7 +114,7 @@ module.exports.searchSales = async (req, res, next) => {
     const totalSales = await Sale.count({ where: whereClause });
     const sales = await Sale.findAll({
       where: whereClause,
-      limit: limit,
+      limit: Number(limit),
       offset: offset,
     });
 
