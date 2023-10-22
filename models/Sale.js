@@ -23,14 +23,7 @@ module.exports.SaleModel = (sequelize) => {
 				allowNull: false,
 				defaultValue:  moment().format('YYYY-MM-DD'),
 			},
-            user_id: {
-				type: DataTypes.INTEGER,
-				allowNull: false,
-			},
-            season_id: {
-				type: DataTypes.INTEGER,
-				allowNull: false,
-			},
+            
 		},
 		{
 			// Other model options go here

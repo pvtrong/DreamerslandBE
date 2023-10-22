@@ -1,7 +1,7 @@
 require("dotenv").config();
 // Load model
 const { Sale } = require("../db");
-const { Season } = require("../db");
+const { Season, User } = require("../db");
 const { Op, fn, col } = require("sequelize");
 
 const utils = require("../utils");
@@ -137,7 +137,17 @@ module.exports.getSaleById = async (req, res, next) => {
   const { id } = req.params;
 
   try {
-    const sale = await Sale.findByPk(id);
+    const sale = await Sale.findByPk(id, {
+      attributes: { exclude: ["user_id", "season_id"] },
+      include: [
+        { model: Season, as: "season" }, // Bổ sung thông tin từ mối quan hệ "season"
+        {
+          model: User,
+          as: "user",
+          attributes: ["id", "first_name", "last_name", "bio", "email"],
+        }, // Bổ sung thông tin từ mối quan hệ "user"
+      ],
+    });
 
     if (sale) {
       res.status(200).json(sale);

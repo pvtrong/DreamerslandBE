@@ -1,6 +1,7 @@
 let yup = require("yup");
 const { Sale } = require("../db");
-const { Season } = require("../db");
+const { Season,User } = require("../db");
+
 const { Op, fn, col, literal } = require("sequelize");
 
 // ========================================================================
@@ -49,6 +50,9 @@ module.exports.validationUpdateSale = (req, res, next) => {
 };
 // check list id update
 module.exports.checkListIdUpdate = async (req, res, next) => {
+  if((new Set(req.body.ids).size !==req.body.ids.length )){
+    req.body.ids =  Array.from(new Set( req.body.ids));
+   }
   const listId = req.body.ids || [];
   for (let i = 0; i < listId.length; i++) {
     const saleItem =await Sale.findOne({
@@ -57,7 +61,6 @@ module.exports.checkListIdUpdate = async (req, res, next) => {
       },
       raw:true
     });
-    console.log(saleItem)
     if(!saleItem){
         return next({statusCode:400,message:"Tồn tại doanh thu muốn cập nhật không có trong hệ thống"})
     }
@@ -82,6 +85,28 @@ module.exports.checkSeason = async (req, res, next) => {
   }
 };
 
+// Chekc list user gui len co ton tai ko va co bi dublicate ko
+module.exports.notFoundUser = async (req, res, next) => {
+  
+  if((new Set(req.body.users).size !==req.body.users.length )){
+   req.body.users =  Array.from(new Set( req.body.users));
+  }
+  const listId = req.body.users || [];
+  for (let i = 0; i < listId.length; i++) {
+    const userItem =await User.findOne({
+      where: {
+        id: listId[i],
+      },
+      raw:true
+    });
+    console.log(userItem)
+    if(!userItem){
+        return next({statusCode:400,message:"Tồn tại user muốn thêm doanh só không có trong hệ thống"})
+    }
+  }
+  next();
+}
+// Tồn tại user đã thêm từ trước
 module.exports.existUserForDate = async (req, res, next) => {
   try {
     const { users } = req.body;
@@ -95,7 +120,6 @@ module.exports.existUserForDate = async (req, res, next) => {
       ),
       raw: true,
     });
-    console.log(lisUserForday);
     if (
       new Set([...lisUserForday.map((i) => i.user_id), ...users]).size !==
       users.length + lisUserForday.length

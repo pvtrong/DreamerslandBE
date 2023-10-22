@@ -8,7 +8,8 @@ const {
   checkSeason,
   existUserForDate,
   validationUpdateSale,
-  checkListIdUpdate
+  checkListIdUpdate,
+  notFoundUser
 } = require("../middlewares/saleMiddleware");
 const { validationUpdate } = require("../middlewares/taskMiddleware");
 
@@ -18,6 +19,7 @@ router.post(
   "/sales",
   validationCreateSale,
   checkSeason,
+  notFoundUser,
   existUserForDate,
   saleController.createManySale,
   
