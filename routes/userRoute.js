@@ -13,6 +13,7 @@ const {
 	validationForgotPassword,
 	isEmailRegistered,
 	validationResetPassword,
+	validationDeleteUser,
 	isResetTokenValid,
 } = require('../middlewares/userMiddleware');
 
@@ -51,6 +52,11 @@ router.post(
 	'/user/reset_password',
 	[validationResetPassword, isResetTokenValid],
 	usersController.resetPassword
+); // reset to new password
+router.delete(
+	'/user/:phone_number',
+	[validationDeleteUser],
+	usersController.deleteUser
 ); // reset to new password
 
 module.exports = router;

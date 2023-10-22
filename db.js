@@ -6,7 +6,7 @@ const sequelize = new Sequelize(
 	process.env.DB_USER,
 	process.env.DB_PASSWORD,
 	{
-		host: '35.78.73.126',
+		host: process.env.DB_HOST,
 		dialect: 'mysql' /* 'mysql' | 'mariadb' | 'postgres' | 'mssql' */,
 	}
 );
@@ -28,7 +28,7 @@ const { UserModel } = require('./models/User');
 const User = UserModel(sequelize);
 
 if (process.env.MIGRATE_DB == 'TRUE') {
-	sequelize.sync().then(() => {
+	sequelize.sync({ alter: true }).then(() => {
 		console.log(`All tables synced!`);
 		process.exit(0);
 	});

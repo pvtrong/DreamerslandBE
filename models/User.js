@@ -43,6 +43,11 @@ module.exports.UserModel = (sequelize) => {
 				type: DataTypes.STRING,
 				allowNull: true,
 			},
+			phone_number: {
+				type: DataTypes.STRING,
+				allowNull: false,
+				unique: true
+			},
 		},
 		{
 			// Other model options go here
