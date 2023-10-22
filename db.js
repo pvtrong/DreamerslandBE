@@ -66,11 +66,10 @@ if (process.env.MIGRATE_DB == 'TRUE') {
       process.exit(0);
     });
   }
-
-  module.exports = {
-    Task,
-    User,
-    Sale,
-    Season,
-  };
 }
+module.exports = {
+  Task,
+  User,
+  Sale,
+  Season,
+};
