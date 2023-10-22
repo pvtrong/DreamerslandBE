@@ -15,6 +15,10 @@ let schemaSignup = yup.object().shape({
 		.string()
 		.required('Please enter New Password')
 		.min(6, 'Please enter minimum 6 characters'),
+	phone_number: yup
+		.string()
+		.required('Please enter Phone Number')
+		.min(10, 'Please enter minimum 10 characters'),
 });
 
 // Validation - Signup
@@ -27,6 +31,7 @@ module.exports.validationSignup = (req, res, next) => {
 			{
 				email: req.body.email,
 				password: req.body.password,
+				phone_number: req.body.phone_number
 			},
 			{ abortEarly: false }
 		)
@@ -45,7 +50,7 @@ module.exports.isUserExistsSignup = async (req, res, next) => {
 	try {
 		const user = await User.findOne({
 			where: {
-				email: req.body.email,
+				phone_number: req.body.phone_number,
 			},
 		});
 
@@ -65,10 +70,10 @@ module.exports.isUserExistsSignup = async (req, res, next) => {
 
 // Schema - Login
 let schemaLogin = yup.object().shape({
-	email: yup
+	phone_number: yup
 		.string()
-		.required('Please enter Email')
-		.email('Please enter valid Email'),
+		.required('Please enter Phone Number')
+		.min(10, 'Please enter minimum 10 characters'),
 	password: yup
 		.string()
 		.required('Please enter New Password')
@@ -82,7 +87,7 @@ module.exports.validateLogin = (req, res, next) => {
 	schemaLogin
 		.validate(
 			{
-				email: req.body.email,
+				phone_number: req.body.phone_number,
 				password: req.body.password,
 			},
 			{ abortEarly: false }
@@ -134,6 +139,11 @@ let schemaUpdateProfile = yup.object().shape({
 		.required()
 		.required('Please enter Email')
 		.email('Please enter valid Email'),
+	phone_number: yup
+		.string()
+		.required()
+		.required('Please enter Phone Number')
+		.min(10, 'Please enter minimum 10 characters'),
 });
 
 // Validation - UpdateProfile
@@ -148,6 +158,7 @@ module.exports.validationUpdateProfile = (req, res, next) => {
 				last_name: req.body.last_name,
 				bio: req.body.bio,
 				email: req.body.email,
+				phone_number: req.body.phone_number,
 			},
 			{ abortEarly: false }
 		)
@@ -166,7 +177,7 @@ module.exports.isUserExistsUpdate = async (req, res, next) => {
 	try {
 		const user = await User.findOne({
 			where: {
-				email: req.body.email,
+				phone_number: req.body.phone_number,
 				id: {
 					[Op.ne]: req.user.id,
 				},
@@ -174,8 +185,8 @@ module.exports.isUserExistsUpdate = async (req, res, next) => {
 		});
 
 		if (user) {
-			let err = new Error('Email already registered.');
-			err.field = 'email';
+			let err = new Error('Phone Number already registered.');
+			err.field = 'phone_number';
 			return next(err);
 		}
 
@@ -297,6 +308,15 @@ let schemaResetPassword = yup.object().shape({
 	token: yup.string().required('Reset password token not found'),
 });
 
+let schemaDeleteUser = yup.object().shape({
+	phone_number: yup
+		.string()
+		.required('Please enter Phone Number')
+		.min(10, 'Please enter minimum 10 characters'),
+});
+
+
+
 // Validation - ResetPassword
 module.exports.validationResetPassword = (req, res, next) => {
 	// validations here
@@ -308,6 +328,27 @@ module.exports.validationResetPassword = (req, res, next) => {
 				new_password: req.body.new_password,
 				repeat_new_password: req.body.repeat_new_password,
 				token: req.body.token,
+			},
+			{ abortEarly: false }
+		)
+		.then(function () {
+			next();
+		})
+		.catch(function (err) {
+			return next(err);
+		});
+};
+
+module.exports.validationDeleteUser = (req, res, next) => {
+	// validations here
+	console.log('🐞 validationDeleteUser');
+
+	const phone = req.params.phone_number || ''
+
+	schemaDeleteUser
+		.validate(
+			{
+				phone_number: phone,
 			},
 			{ abortEarly: false }
 		)

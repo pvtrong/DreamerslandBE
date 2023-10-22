@@ -13,6 +13,9 @@ const jwt = require('jsonwebtoken');
 module.exports.signUp = async (req, res, next) => {
 	try {
 		const email = req.body.email;
+		const first_name = req.body.first_name;
+		const last_name = req.body.last_name;
+		const phone_number = req.body.phone_number;
 
 		// encrypt password
 		var salt = bcrypt.genSaltSync(10);
@@ -22,38 +25,24 @@ module.exports.signUp = async (req, res, next) => {
 		const token = crypto.randomBytes(16).toString('hex');
 
 		const record = await User.create({
+			first_name: first_name,
+			last_name: last_name,
 			email: email,
+			phone_number: phone_number,
 			password: password,
 			token: token,
 		});
-
-		// Send the email
-		var transporter = nodemailer.createTransport({
-			host: process.env.MAIL_HOST,
-			port: process.env.MAIL_POST,
-			auth: {
-				user: process.env.MAIL_AUTH_USER,
-				pass: process.env.MAIL_AUTH_PASS,
-			},
-		});
-		var verificationLink = `${process.env.CLIENT_URL}/signup-verify/?token=${token}`;
-
-		var mailOptions = {
-			from: process.env.MAIL_FROM,
-			to: email,
-			subject: 'Thank you for signing up',
-			html: `Congratulations!<br/><br/>
-        You have successfully signed up. Please click the link below to verify your account:<br/>
-        <a href="${verificationLink}" target="_blank">Verify email</a><br/><br/>
-        Thank you.`,
-		};
-
-		await transporter.sendMail(mailOptions);
-
+		const resUserVerify = await this.signUpVerifyImmediate(token);
+		const resSignUp = {
+			first_name: first_name,
+			last_name: last_name,
+			email: email,
+			phone_number: phone_number,
+		}
 		return res.json({
 			status: 'success',
 			result: {
-				record: record,
+				record: resUserVerify ? resSignUp : resUserVerify
 			},
 		});
 	} catch (err) {
@@ -61,6 +50,40 @@ module.exports.signUp = async (req, res, next) => {
 	}
 };
 
+module.exports.signUpVerifyImmediate = async (token) => {
+	try {
+		const user = await User.findOne({
+			where: {
+				token: token,
+				is_verified: 0,
+			},
+		});
+
+		if (user) {
+			const record = await User.update(
+				{
+					token: '',
+					is_verified: 1,
+				},
+				{
+					where: {
+						id: {
+							[Op.eq]: user.id,
+						},
+					},
+				}
+			);
+
+			return user;
+		} else {
+			let err = new Error('Invalid token provided or user already verified');
+			err.field = 'token';
+			return err;
+		}
+	} catch (err) {
+		return err;
+	}
+};
 // Verify Signup Link
 module.exports.signUpVerify = async (req, res, next) => {
 	try {
@@ -104,12 +127,12 @@ module.exports.signUpVerify = async (req, res, next) => {
 // Login
 module.exports.login = async (req, res, next) => {
 	try {
-		const email = req.body.email;
+		const phone_number = req.body.phone_number;
 		const password = req.body.password;
 
 		const user = await User.findOne({
 			where: {
-				email: email,
+				phone_number: phone_number,
 				is_verified: 1,
 			},
 		});
@@ -124,6 +147,7 @@ module.exports.login = async (req, res, next) => {
 					first_name: user.first_name,
 					last_name: user.last_name,
 					bio: user.bio,
+					phone_number: user.phone_number
 				};
 				return res.json({
 					user: userData,
@@ -179,6 +203,7 @@ module.exports.updateProfile = async (req, res, next) => {
 		var last_name = req.body.last_name;
 		var bio = req.body.bio;
 		var email = req.body.email;
+		var phone_number = req.body.phone_number;
 
 		const result = User.update(
 			{
@@ -186,6 +211,7 @@ module.exports.updateProfile = async (req, res, next) => {
 				last_name: last_name,
 				bio: bio,
 				email: email,
+				phone_number: phone_number,
 			},
 			{
 				where: {
@@ -337,6 +363,25 @@ module.exports.resetPassword = async (req, res, next) => {
 				},
 			}
 		);
+
+		return res.json({
+			status: 'success',
+			result: result,
+		});
+	} catch (err) {
+		return next(err);
+	}
+};
+module.exports.deleteUser = async (req, res, next) => {
+	try {
+		var phone_number = req.params.phone_number || '';
+
+		const result = await User.destroy({
+			where: {
+				phone_number: phone_number
+			}
+		})
+
 
 		return res.json({
 			status: 'success',

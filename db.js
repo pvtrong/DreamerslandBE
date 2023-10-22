@@ -7,7 +7,7 @@ const sequelize = new Sequelize(
   process.env.DB_PASSWORD,
   {
     host: process.env.DB_HOST,
-    dialect: "mysql" /* 'mysql' | 'mariadb' | 'postgres' | 'mssql' */,
+    dialect: 'mysql' /* 'mysql' | 'mariadb' | 'postgres' | 'mssql' */,
   }
 );
 
@@ -30,41 +30,46 @@ const Sale = SaleModel(sequelize);
 const Season = SeasonModel(sequelize);
 const User = UserModel(sequelize);
 
-// establish relationships
-
-// season - sale : 1 - N
-Sale.belongsTo(Season, {
-  foreignKey: {
-    name: "season_id", // Đặt tên tùy chỉnh cho khóa ngoại đến Season
-    allowNull: false,
-    onDelete: "RESTRICT",
-    onUpdate: "CASCADE",
-  },
-  as: "season",
-});
-
-// user - sale : 1 - N
-Sale.belongsTo(User, {
-  foreignKey: {
-    name: "user_id",
-    allowNull: false,
-    onDelete: "RESTRICT",
-    onUpdate: "CASCADE",
-  },
-  as: "user",
-});
-
-// Season.hasMany(Sale, { foreignKey: 'season_id' })
-if (process.env.MIGRATE_DB == "TRUE") {
-  sequelize.sync().then(() => {
+if (process.env.MIGRATE_DB == 'TRUE') {
+  sequelize.sync({ alter: true }).then(() => {
     console.log(`All tables synced!`);
     process.exit(0);
   });
-}
+  // establish relationships
 
-module.exports = {
-  Task,
-  User,
-  Sale,
-  Season,
-};
+  // season - sale : 1 - N
+  Sale.belongsTo(Season, {
+    foreignKey: {
+      name: "season_id", // Đặt tên tùy chỉnh cho khóa ngoại đến Season
+      allowNull: false,
+      onDelete: "RESTRICT",
+      onUpdate: "CASCADE",
+    },
+    as: "season",
+  });
+
+  // user - sale : 1 - N
+  Sale.belongsTo(User, {
+    foreignKey: {
+      name: "user_id",
+      allowNull: false,
+      onDelete: "RESTRICT",
+      onUpdate: "CASCADE",
+    },
+    as: "user",
+  });
+
+  // Season.hasMany(Sale, { foreignKey: 'season_id' })
+  if (process.env.MIGRATE_DB == "TRUE") {
+    sequelize.sync().then(() => {
+      console.log(`All tables synced!`);
+      process.exit(0);
+    });
+  }
+
+  module.exports = {
+    Task,
+    User,
+    Sale,
+    Season,
+  };
