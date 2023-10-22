@@ -73,3 +73,4 @@ if (process.env.MIGRATE_DB == 'TRUE') {
     Sale,
     Season,
   };
+}
