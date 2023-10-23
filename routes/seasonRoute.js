@@ -3,14 +3,7 @@ const seasonController = require('../controllers/seasonController');
 
 const router = Router();
 // Import Middlewares
-const {
-  validationCreateSale,
-  checkSeason,
-  existUserForDate,
-  validationUpdateSale,
-  checkListIdUpdate,
-  notFoundUser
-} = require("../middlewares/saleMiddleware");
+
 const { validationUpdate } = require("../middlewares/taskMiddleware");
 
 // Import Controllers

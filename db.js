@@ -32,11 +32,6 @@ const Sale = SaleModel(sequelize);
 const Season = SeasonModel(sequelize);
 const User = UserModel(sequelize);
 const Rank = RankModel(sequelize)
-if (process.env.MIGRATE_DB == 'TRUE') {
-  sequelize.sync({ alter: true }).then(() => {
-    console.log(`All tables synced!`);
-    process.exit(0);
-  });
   // establish relationships
 
   // season - sale : 1 - N
@@ -68,7 +63,7 @@ if (process.env.MIGRATE_DB == 'TRUE') {
       process.exit(0);
     });
   }
-}
+
 module.exports = {
   Task,
   User,
