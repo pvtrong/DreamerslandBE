@@ -31,12 +31,6 @@ const Season = SeasonModel(sequelize);
 const User = UserModel(sequelize);
 
 if (process.env.MIGRATE_DB == 'TRUE') {
-  sequelize.sync({ alter: true }).then(() => {
-    console.log(`All tables synced!`);
-    process.exit(0);
-  });
-  // establish relationships
-
   // season - sale : 1 - N
   Sale.belongsTo(Season, {
     foreignKey: {
