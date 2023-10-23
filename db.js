@@ -54,12 +54,10 @@ if (process.env.MIGRATE_DB == 'TRUE') {
   });
 
   // Season.hasMany(Sale, { foreignKey: 'season_id' })
-  if (process.env.MIGRATE_DB == "TRUE") {
-    sequelize.sync().then(() => {
-      console.log(`All tables synced!`);
-      process.exit(0);
-    });
-  }
+  sequelize.sync().then(() => {
+    console.log(`All tables synced!`);
+    process.exit(0);
+  });
 }
 module.exports = {
   Task,
