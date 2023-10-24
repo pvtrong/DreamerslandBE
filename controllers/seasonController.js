@@ -54,3 +54,55 @@ module.exports.getDeitailSeason = async (req, res, next) => {
     next(error);
   }
 };
+
+// create season
+module.exports.createSeason = async (req, res, next) => {
+  try {
+    const { season_name, start_date, end_date } = req.body;
+    const newSeason = await Season.create({
+      season_name,
+      start_date,
+      end_date,
+    });
+    res.status(201).json(newSeason);
+  } catch (error) {
+    next(error);
+  }
+}
+
+// edit season
+module.exports.editSeason = async (req, res, next) => {
+  try {
+    const { id, season_name, start_date, end_date } = req.body;
+    const editSeason = await Season.update(
+      {
+        season_name,
+        start_date,
+        end_date,
+      },
+      {
+        where: {
+          id,
+        },
+      }
+    );
+    res.status(200).json(editSeason);
+  } catch (error) {
+    next(error);
+  }
+}
+
+// delete season
+module.exports.deleteSeason = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const deletedSeason = await Season.destroy({
+      where: {
+        id,
+      },
+    });
+    res.status(200).json(deletedSeason);
+  } catch (error) {
+    next(error);
+  }
+}
