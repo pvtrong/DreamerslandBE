@@ -10,6 +10,7 @@ const bcrypt = require('bcryptjs');
 const crypto = require('crypto');
 const jwt = require('jsonwebtoken');
 const { ROLE } = require('../models/Role');
+const { getPageSize } = require('../services/utils');
 
 // SignUp
 module.exports.signUp = async (req, res, next) => {
@@ -235,6 +236,30 @@ module.exports.loginAdmin = async (req, res, next) => {
 			err.field = 'login';
 			return next(err);
 		}
+	} catch (err) {
+		return next(err);
+	}
+};
+module.exports.getListUsers = async (req, res, next) => {
+	const { page, size } = getPageSize(req.query.page, req.query.size)
+	try {
+
+		const roleUser = await Role.findAll({
+			include: [{ model: User, as: "user" }],
+			where: {
+				role_id: ROLE.NORMAL_USER
+			},
+		});
+		const usersAll = roleUser.map(item => item.user)
+		const usersRes = usersAll.filter((item, index) => {
+			return index >= size * (page - 1) && index <= size * page - 1
+		})
+
+		return res.json({
+			data: usersRes,
+			page,
+			size,
+		});
 	} catch (err) {
 		return next(err);
 	}

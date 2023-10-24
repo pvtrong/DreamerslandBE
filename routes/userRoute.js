@@ -15,6 +15,7 @@ const {
 	validationResetPassword,
 	validationDeleteUser,
 	isResetTokenValid,
+	isAdmin
 } = require('../middlewares/userMiddleware');
 
 // Import Controllers
@@ -28,6 +29,7 @@ router.post(
 router.get('/user/signup/verify/:token', usersController.signUpVerify); // verify user link when clicked
 router.post('/user/login', [validateLogin], usersController.loginUser);
 router.post('/admin/login', [validateLogin], usersController.loginAdmin);
+router.get('/admin/list_user', [authenticateToken, isAdmin], usersController.getListUsers);
 router.get('/user', [authenticateToken], usersController.getLoggedInUser); // get logged in user
 router.post(
 	'/user/update_profile',
