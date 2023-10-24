@@ -26,48 +26,61 @@ const { UserModel } = require("./models/User");
 const { SaleModel } = require("./models/Sale");
 const { SeasonModel } = require("./models/Season");
 const { RankModel } = require("./models/Rank");
+const { RoleModel } = require("./models/Role");
 
 const Task = TaskModel(sequelize);
 const Sale = SaleModel(sequelize);
 const Season = SeasonModel(sequelize);
 const User = UserModel(sequelize);
 const Rank = RankModel(sequelize)
-  // establish relationships
+const Role = RoleModel(sequelize)
+// establish relationships
 
-  // season - sale : 1 - N
-  Sale.belongsTo(Season, {
-    foreignKey: {
-      name: "season_id", // Đặt tên tùy chỉnh cho khóa ngoại đến Season
-      allowNull: false,
-      onDelete: "RESTRICT",
-      onUpdate: "CASCADE",
-    },
-    as: "season",
+// season - sale : 1 - N
+Sale.belongsTo(Season, {
+  foreignKey: {
+    name: "season_id", // Đặt tên tùy chỉnh cho khóa ngoại đến Season
+    allowNull: false,
+    onDelete: "RESTRICT",
+    onUpdate: "CASCADE",
+  },
+  as: "season",
+});
+
+// user - sale : 1 - N
+Sale.belongsTo(User, {
+  foreignKey: {
+    name: "user_id",
+    allowNull: false,
+    onDelete: "RESTRICT",
+    onUpdate: "CASCADE",
+  },
+  as: "user",
+});
+
+Role.belongsTo(User, {
+  foreignKey: {
+    name: "user_id",
+    allowNull: false,
+    onDelete: "RESTRICT",
+    onUpdate: "CASCADE",
+  },
+  as: "user",
+});
+
+// Season.hasMany(Sale, { foreignKey: 'season_id' })
+if (process.env.MIGRATE_DB == "TRUE") {
+  sequelize.sync({ alter: true }).then(() => {
+    console.log(`All tables synced!`);
+    process.exit(0);
   });
-
-  // user - sale : 1 - N
-  Sale.belongsTo(User, {
-    foreignKey: {
-      name: "user_id",
-      allowNull: false,
-      onDelete: "RESTRICT",
-      onUpdate: "CASCADE",
-    },
-    as: "user",
-  });
-
-  // Season.hasMany(Sale, { foreignKey: 'season_id' })
-  if (process.env.MIGRATE_DB == "TRUE") {
-    sequelize.sync().then(() => {
-      console.log(`All tables synced!`);
-      process.exit(0);
-    });
-  }
+}
 
 module.exports = {
   Task,
   User,
   Sale,
   Season,
-  Rank
+  Rank,
+  Role
 };
