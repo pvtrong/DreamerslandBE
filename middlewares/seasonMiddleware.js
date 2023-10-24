@@ -10,8 +10,6 @@ let seasonCreate = yup.object().shape({
   season_name: yup.string().required("Tên mùa giải không được để trống"),
   start_date: yup.date().required("Ngày bắt đầu không được để trống"),
   end_date: yup.date().required("Ngày kết thúc không được để trống"),
-  current_season: yup.boolean().required("Mùa giải hiện tại không được để trống"),
-  is_current: yup.boolean().required("Mùa giải hiện tại không được để trống"),
 });
 
 let seasonUpdate = yup.object().shape({
@@ -22,8 +20,6 @@ let seasonUpdate = yup.object().shape({
     season_name: yup.string().required("Tên mùa giải không được để trống"),
     start_date: yup.date().required("Ngày bắt đầu không được để trống"),
     end_date: yup.date().required("Ngày kết thúc không được để trống"),
-    current_season: yup.boolean().required("Mùa giải hiện tại không được để trống"),
-    is_current: yup.boolean().required("Mùa giải hiện tại không được để trống"),
 });
 
 // Validation - Create
@@ -93,16 +89,13 @@ module.exports.checkSeason = async (req, res, next) => {
       });
 
       const conflictSeason = allSeason.find((seasonItem) => {
-        if (seasonItem.start_date <= start_date && seasonItem.end_date >= start_date) {
-          return seasonItem;
-        }
-        if (seasonItem.start_date <= end_date && seasonItem.end_date >= end_date) {
-          return seasonItem;
-        }
-        if (seasonItem.start_date >= start_date && seasonItem.end_date <= end_date) {
-          return seasonItem;
-        }
+        if(
+          (start_date >= seasonItem.start_date &&
+            start_date <= seasonItem.end_date) ||
+          (end_date >= seasonItem.start_date && end_date <= seasonItem.end_date)
+        ) return seasonItem
       });
+
       if (conflictSeason) {
         return next({
           statusCode: 400,
