@@ -66,19 +66,40 @@ module.exports.deleteRank = async (req, res, next) => {
 };
 module.exports.searchRank = async (req, res, next) => {
   try {
-    let { rank_name } = req.query;
-   
+    let { rank_name, page, limit } = req.query;
+    if (isNaN(page) || !page || !Number.isInteger(Number(page))) {
+      page = 1;
+    }
+    if (isNaN(limit) || !limit||!Number.isInteger(Number(limit))) {
+      limit = 30;
+    }
+    const offset = (Number(page) - 1) * Number(limit);
     if (!rank_name) rank_name = "";
 
+
+    const totalRanks = await Rank.count({ where: {
+        rank_name: {
+          [Op.like]: `%${rank_name}%`,
+        },
+      }, });
     const result = await Rank.findAll({
       where: {
         rank_name: {
           [Op.like]: `%${rank_name}%`,
         },
       },
+      limit: Number(limit),
+      offset: offset,
     });
 
-    res.status(200).json(result);
+    const totalPages = Math.ceil(totalRanks / limit);
+
+    res.status(200).json({
+      data: result,
+      total: totalRanks,
+      page: parseInt(page),
+      totalPages,
+    });
   } catch (error) {
     next(error);
   }
