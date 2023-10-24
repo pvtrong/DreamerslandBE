@@ -30,6 +30,7 @@ router.get('/user/signup/verify/:token', usersController.signUpVerify); // verif
 router.post('/user/login', [validateLogin], usersController.loginUser);
 router.post('/admin/login', [validateLogin], usersController.loginAdmin);
 router.get('/admin/list_user', [authenticateToken, isAdmin], usersController.getListUsers);
+router.get('/admin/user/:id', [authenticateToken, isAdmin], usersController.getDetailUser);
 router.get('/user', [authenticateToken], usersController.getLoggedInUser); // get logged in user
 router.post(
 	'/user/update_profile',
