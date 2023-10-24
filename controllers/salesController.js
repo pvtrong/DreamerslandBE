@@ -87,9 +87,7 @@ module.exports.searchSales = async (req, res, next) => {
     if (isNaN(limit) || !limit||!Number.isInteger(Number(limit))) {
       limit = 30;
     }
-    console.log(limit ,page)
     const offset = (Number(page) - 1) * Number(limit);
-  console.log(offset)
     const whereClause = {};
 
     if (session_id) {

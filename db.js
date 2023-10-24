@@ -25,12 +25,15 @@ const { TaskModel } = require("./models/Task");
 const { UserModel } = require("./models/User");
 const { SaleModel } = require("./models/Sale");
 const { SeasonModel } = require("./models/Season");
+const { RankModel } = require("./models/Rank");
+
 const Task = TaskModel(sequelize);
 const Sale = SaleModel(sequelize);
 const Season = SeasonModel(sequelize);
 const User = UserModel(sequelize);
+const Rank = RankModel(sequelize)
+  // establish relationships
 
-if (process.env.MIGRATE_DB == 'TRUE') {
   // season - sale : 1 - N
   Sale.belongsTo(Season, {
     foreignKey: {
@@ -54,14 +57,17 @@ if (process.env.MIGRATE_DB == 'TRUE') {
   });
 
   // Season.hasMany(Sale, { foreignKey: 'season_id' })
-  sequelize.sync().then(() => {
-    console.log(`All tables synced!`);
-    process.exit(0);
-  });
-}
+  if (process.env.MIGRATE_DB == "TRUE") {
+    sequelize.sync().then(() => {
+      console.log(`All tables synced!`);
+      process.exit(0);
+    });
+  }
+
 module.exports = {
   Task,
   User,
   Sale,
   Season,
+  Rank
 };
