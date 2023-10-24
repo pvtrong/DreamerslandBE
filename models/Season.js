@@ -23,15 +23,6 @@ module.exports.SeasonModel = (sequelize) => {
 				allowNull: false,
 				
 			},
-            current_season: {
-				type: DataTypes.INTEGER,
-				allowNull: false,
-			},
-            is_current: {
-				type: DataTypes.BOOLEAN,
-				allowNull: false,
-                defaultValue : false
-			},
 		},
 		{
 			// Other model options go here
