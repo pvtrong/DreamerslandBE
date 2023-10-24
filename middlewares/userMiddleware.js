@@ -1,7 +1,9 @@
 let yup = require('yup');
 const jwt = require('jsonwebtoken');
 const { User } = require('../db');
+const { Role } = require('../db');
 const { Op } = require('sequelize');
+const { ROLE } = require('../models/Role');
 
 // ========================================================================
 
@@ -122,6 +124,22 @@ module.exports.authenticateToken = (req, res, next) => {
 		);
 	} else {
 		let err = new Error('Unauthorized');
+		err.field = 'login';
+		return next(err);
+	}
+};
+
+module.exports.isAdmin = async (req, res, next) => {
+
+	const role = await Role.findOne({
+		where: {
+			user_id: req.user.id || ''
+		},
+	});
+	if (role && role.role_id === ROLE.ADMIN) {
+		return next()
+	} else {
+		let err = new Error('Account is not a Admin');
 		err.field = 'login';
 		return next(err);
 	}
