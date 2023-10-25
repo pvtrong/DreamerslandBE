@@ -264,6 +264,21 @@ module.exports.getListUsers = async (req, res, next) => {
 		return next(err);
 	}
 };
+module.exports.getDetailUser = async (req, res, next) => {
+	const user_id = req.params.id || ''
+	try {
+
+		const user = await User.findOne({
+			where: {
+				id: user_id
+			},
+		});
+
+		return res.json(user);
+	} catch (err) {
+		return next(err);
+	}
+};
 
 // Get Logged in user
 module.exports.getLoggedInUser = (req, res, next) => {
