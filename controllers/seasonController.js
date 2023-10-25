@@ -6,8 +6,8 @@ module.exports.createManySale;
 // get all season
 module.exports.getAllSeason = async (req, res, next) => {
   try {
-    let { season_name, limit, page } = req.query;
-    if (!season_name) season_name = "";
+    let { keyword, limit, page } = req.query;
+    if (!keyword) keyword = "";
     if (isNaN(page) || !page || !Number.isInteger(Number(page))) {
       page = 1;
     }
@@ -18,7 +18,7 @@ module.exports.getAllSeason = async (req, res, next) => {
     const listSeason = await Season.findAll({
       where: {
         season_name: {
-          [Op.like]: `%${season_name}%`,
+          [Op.like]: `%${keyword}%`,
         },
       },
       limit: Number(limit),
@@ -27,7 +27,7 @@ module.exports.getAllSeason = async (req, res, next) => {
     const totalSeason = await Season.count({
       where: {
         season_name: {
-          [Op.like]: `%${season_name}%`,
+          [Op.like]: `%${keyword}%`,
         },
       },
     });
