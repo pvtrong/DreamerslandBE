@@ -11,50 +11,59 @@ var fs = require("fs");
 const moment = require("moment");
 const { number } = require("yup");
 module.exports.createManySale;
-const TYPE_ORDER = {
-  DAY: 1,
-  MONTH: 2,
-  YEAR: 3,
-};
-const FIELD_SORT = {
-  AMOUNT: 1,
-  POINT: 2,
+
+const SORT_BY = {
+  AMOUNT: "amount",
+  POINT: "point",
 };
 module.exports.getTopuser = async (req, res, next) => {
   try {
-    let { type, season_id, field } = req.query;
-    type = Number(type);
-    field = Number(field);
-    if (!Object.values(TYPE_ORDER).includes(type)) {
-      type = TYPE_ORDER.DAY;
+    let { from, to, season_id, page, limit, sort_by } = req.query;
+
+    // Nếu ko truyền sort_by thì mặc định là sắp xếp theo point
+    if (Object.values(SORT_BY).includes(sort_by)) {
+      sort_by = SORT_BY.POINT;
     }
-    if (!Object.values(TYPE_ORDER).includes(field)) {
-      req.query.field = FIELD_SORT.POINT;
+    const offset = (Number(page) - 1) * Number(limit);
+    const whereClause = {};
+
+    if (season_id) {
+      whereClause.season_id = season_id;
+    }
+    if (from) {
+      const fromDate = new Date(from);
+      fromDate.setHours(0, 0, 0, 0);
+      whereClause.date_time = {
+        [Op.gte]: fromDate,
+      };
+    }
+    if (to) {
+      const toDate = new Date(to);
+      toDate.setHours(23, 59, 59, 999);
+
+      whereClause.date_time = {
+        ...whereClause.date_time,
+        [Op.lte]: toDate,
+      };
+   
+    }
+    if (from && to && new Date(from) > new Date(to)) {
+      return next({
+        statusCode: 400,
+        message: "Ngày bắt đầu phải nhỏ hơn hoặc bằng ngày kết thúc",
+      });
     }
 
-    // Nếu ko gửi lên season thì mặc định lấy season hiện tại
-    if (!season_id) {
-      const seasonCurrent = await Season.findOne({
-        where: {
-          is_current: true,
-        },
-        raw: true,
-      });
-      if (seasonCurrent) {
-        season_id = seasonCurrent.id;
-      }
+    // Check Season
+    const seasonCurrent = await Season.findByPk(season_id, {
+      raw: true,
+    });
+    if (!seasonCurrent) {
+      next({ statusCode: 400, message: "Season không hợp lệ" });
     }
-    //  nếu có gửi lên season thì check xem season có hợp lệ ko
-    else {
-      const seasonCurrent = await Season.findByPk(season_id, {
-        raw: true,
-      });
-      if (!seasonCurrent) {
-        next({ statusCode: 400, message: "Season không hợp lệ" });
-      }
-    }
+
     let listSale = await Sale.findAll({
-      where: { season_id },
+      where: whereClause,
       attributes: { exclude: ["user_id", "season_id"] },
       include: [
         { model: Season, as: "season" }, // Bổ sung thông tin từ mối quan hệ "season"
@@ -65,6 +74,7 @@ module.exports.getTopuser = async (req, res, next) => {
         }, // Bổ sung thông tin từ mối quan hệ "user"
       ],
     });
+
     listSale = listSale
       .map((sale) => sale.toJSON())
       .sort((a, b) => new Date(a.date_time) - new Date(b.date_time))
@@ -72,138 +82,47 @@ module.exports.getTopuser = async (req, res, next) => {
         ...salesItem,
         date_time: moment(salesItem.date_time).format("DD/MM/YYYY"),
       }));
-    req.listSale = listSale;
-    switch (type) {
-      case TYPE_ORDER.DAY: {
-        getTopByDay(req, res, next);
-        break;
-      }
-      case TYPE_ORDER.MONTH: {
-        getTopByMonth(req, res, next);
-        break;
-      }
-      case TYPE_ORDER.YEAR: {
-        getTopByYear(req, res, next);
-        break;
-      }
-      default: {
-        getTopByDay(req, res, next);
-      }
-    }
+       // Add Amount, Point  của từng user thành 1 item
+    listSale = handleAdd(listSale)
+
+    // sort
+    listSale = sortResult(listSale, sort_by);
+    res.status(200).json(listSale);
+
+   
+    
   } catch (error) {
     next(error);
   }
 };
 
-// Top theo ngày
-const getTopByDay = async (req, res, next) => {
-  const { listSale } = req;
-  let { field } = req.query;
-  let result = {};
-  
-  // group
-  result = groupBy(listSale,"date_time")
-  
-  // sort
-  result = sortResult(result,field);
-  res.status(200).json(result);
-};
-
-// Top theo tháng
-const getTopByMonth = async (req, res, next) => {
-  let { field } = req.query;
-  let result = {};
-  let { listSale } = req;
-  // chuyển về dd-yyyy
-  listSale = listSale.map((item) => {
-    const index = item.date_time.indexOf("/");
-    if (index >= 0) {
-      item.date_time = item.date_time.substring(index + 1);
-    }
-    return item;
-  });
-
-  result = groupBy(listSale,"date_time")
-  result = handleAdd(result);
-  result = sortResult(result,field);
-  res.status(200).json(result);
-};
-const getTopByYear = async (req, res, next) => {
-  let { field } = req.query;
-  let result = {};
-  let { listSale } = req;
-  // chuyển về dd-yyyy
-  listSale = listSale.map((item) => {
-    const index = item.date_time.lastIndexOf("/");
-    if (index >= 0) {
-      item.date_time = item.date_time.substring(index + 1);
-    }
-    return item;
-  });
-
-  result = groupBy(listSale,"date_time")
-  result = handleAdd(result);
-  result = sortResult(result,field);
-  res.status(200).json(result);
-};
-
 // SORT
-const sortResult = (result,field) => {
-  for (key in result) {
-    // sort theo tiền
-    if (field == FIELD_SORT.AMOUNT) {
-      result[key] = result[key].sort((a, b) => b.amount - a.amount);
+const sortResult = (result, field) => {
+    if (field == SORT_BY.AMOUNT) {
+      result = result.sort((a, b) => b.amount - a.amount);
     }
     // sort theo điểm
     else {
-      result[key] = result[key].sort((a, b) => b.point - a.point);
+      result = result.sort((a, b) => b.point - a.point);
     }
-  }
+ 
   return result;
 };
 
-// grouby
-const groupBy = (listSale, keyword) => {
-  let result = {};
-  listSale.forEach((obj) => {
-    const key = obj[keyword];
-    if (!result[key]) {
-      result[key] = [];
-    }
-    result[key].push(obj);
-  });
-  return result;
-};
-
-
-// cộng amount và điểm cho rankking theo tháng ,năm
+// cộng amount và point
 const handleAdd = (data) => {
-  let result = {}
-  for (const key in data) {
-    if (data.hasOwnProperty(key)) {
-      const items = data[key];
-      // Sử dụng Map để gom theo user_id
-      const userMap = new Map();
-      for (const item of items) {
-        const user_id = item.user.id
-        if (!userMap.has(user_id)) {
-          userMap.set(user_id, {
-            ...item,
-            amount: 0,
-            point: 0,
-          });
-        }
-  
-        const userItem = userMap.get(user_id);
-        userItem.amount += item.amount;
-        userItem.point += item.point;
-      }
-  
-      // Chuyển Map thành mảng
-      const resultArray = [...userMap.values()];
-  
-      result[key] = resultArray;
+  let result = {};
+  data.forEach((item) => {
+    const userId = item.user.id;
+    if (!result[userId]) {
+      result[userId] = item;
+    } else {
+      result[userId] = {
+        ...result[userId],
+        amount: result[userId].amount + item.amount,
+        point: result[userId].point + item.point,
+      };
     }
-  }
-  return result;
-}
+  });
+  return Object.values(result);
+};
