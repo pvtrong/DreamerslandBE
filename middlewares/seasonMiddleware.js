@@ -87,19 +87,19 @@ module.exports.checkSeason = async (req, res, next) => {
             },
           }:{},
       });
-
+      
       const conflictSeason = allSeason.find((seasonItem) => {
-        if(
-          (start_date >= seasonItem.start_date &&
-            start_date <= seasonItem.end_date) ||
-          (end_date >= seasonItem.start_date && end_date <= seasonItem.end_date)
-        ) return seasonItem
+        return (
+          (new Date(start_date)?.getDate >= seasonItem.start_date.getDate() &&
+            new Date(start_date)?.getDate() <= seasonItem.end_date.getDate()) ||
+          (new Date(end_date)?.getDate() >= seasonItem.start_date.getDate() && new Date(end_date).getDate() <= seasonItem.end_date.getDate())
+        );
       });
 
       if (conflictSeason) {
         return next({
           statusCode: 400,
-          message: `Conflic date với season ${conflictSeason.season_name}`,
+          message: `Thời gian mùa giải đang bị mâu thuẫn với mùa giải ${conflictSeason.season_name}`,
         });
       }
     }

@@ -24,6 +24,19 @@ module.exports.getAllSeason = async (req, res, next) => {
       limit: Number(limit),
       offset: offset,
     });
+
+    listSeason.forEach((item) => {
+      if (
+        new Date(item.start_date).getDate() <= new Date().getDate() &&
+        new Date(item.end_date).getDate() >= new Date().getDate()
+        ) {
+          item.dataValues.is_current_season = true;
+        } else {
+          item.dataValues.is_current_season = false;
+        }
+        console.log(item)
+    });
+
     const totalSeason = await Season.count({
       where: {
         season_name: {
@@ -31,6 +44,7 @@ module.exports.getAllSeason = async (req, res, next) => {
         },
       },
     });
+
     const totalPages = Math.ceil(totalSeason / limit);
 
     res.status(200).json({

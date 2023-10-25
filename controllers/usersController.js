@@ -275,7 +275,7 @@ module.exports.getLoggedInUser = (req, res, next) => {
 			process.env.AUTH_SECRET,
 			(err, decoded) => {
 				if (err) {
-					let err = new Error('Unauthorized');
+					let err = new Error('Bạn đang không đăng nhập');
 					err.field = 'login';
 					return next(err);
 				} else {
@@ -284,7 +284,7 @@ module.exports.getLoggedInUser = (req, res, next) => {
 			}
 		);
 	} else {
-		let err = new Error('Unauthorized');
+		let err = new Error('Bạn đang không đăng nhập');
 		err.field = 'login';
 		return next(err);
 	}
