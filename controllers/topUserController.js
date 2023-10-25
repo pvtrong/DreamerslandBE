@@ -45,7 +45,6 @@ module.exports.getTopuser = async (req, res, next) => {
         ...whereClause.date_time,
         [Op.lte]: toDate,
       };
-   
     }
     if (from && to && new Date(from) > new Date(to)) {
       return next({
@@ -55,24 +54,30 @@ module.exports.getTopuser = async (req, res, next) => {
     }
 
     // Check Season
-    const seasonCurrent = await Season.findByPk(season_id, {
-      raw: true,
-    });
-    if (!seasonCurrent) {
-      next({ statusCode: 400, message: "Season không hợp lệ" });
+    if (season_id) {
+      const seasonCurrent = await Season.findByPk(season_id, {
+        raw: true,
+      });
+      if (!seasonCurrent) {
+        next({ statusCode: 400, message: "Season không hợp lệ" });
+      }
     }
 
+    let include = [
+      // Bổ sung thông tin từ mối quan hệ "season"
+      {
+        model: User,
+        as: "user",
+        attributes: { exclude: ["token", "password", "is_verified"] },
+      }, // Bổ sung thông tin từ mối quan hệ "user"
+    ];
+    if (season_id) {
+      include.push({ model: Season, as: "season" });
+    }
     let listSale = await Sale.findAll({
       where: whereClause,
       attributes: { exclude: ["user_id", "season_id"] },
-      include: [
-        { model: Season, as: "season" }, // Bổ sung thông tin từ mối quan hệ "season"
-        {
-          model: User,
-          as: "user",
-          attributes: { exclude: ["token", "password", "is_verified"] },
-        }, // Bổ sung thông tin từ mối quan hệ "user"
-      ],
+      include
     });
 
     listSale = listSale
@@ -82,15 +87,12 @@ module.exports.getTopuser = async (req, res, next) => {
         ...salesItem,
         date_time: moment(salesItem.date_time).format("DD/MM/YYYY"),
       }));
-       // Add Amount, Point  của từng user thành 1 item
-    listSale = handleAdd(listSale)
+    // Add Amount, Point  của từng user thành 1 item
+    listSale = handleAdd(listSale);
 
     // sort
     listSale = sortResult(listSale, sort_by);
     res.status(200).json(listSale);
-
-   
-    
   } catch (error) {
     next(error);
   }
@@ -98,14 +100,14 @@ module.exports.getTopuser = async (req, res, next) => {
 
 // SORT
 const sortResult = (result, field) => {
-    if (field == SORT_BY.AMOUNT) {
-      result = result.sort((a, b) => b.amount - a.amount);
-    }
-    // sort theo điểm
-    else {
-      result = result.sort((a, b) => b.point - a.point);
-    }
- 
+  if (field == SORT_BY.AMOUNT) {
+    result = result.sort((a, b) => b.amount - a.amount);
+  }
+  // sort theo điểm
+  else {
+    result = result.sort((a, b) => b.point - a.point);
+  }
+
   return result;
 };
 
