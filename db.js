@@ -28,13 +28,15 @@ const { SeasonModel } = require("./models/Season");
 const { RankModel } = require("./models/Rank");
 const { User_Season_Rank_Model } = require("./models/User_Season_Rank");
 
+const { RoleModel } = require("./models/Role");
 
 const Task = TaskModel(sequelize);
 const Sale = SaleModel(sequelize);
 const Season = SeasonModel(sequelize);
 const User = UserModel(sequelize);
-const Rank = RankModel(sequelize);
 const User_Season_Rank = User_Season_Rank_Model(sequelize);
+const Rank = RankModel(sequelize)
+const Role = RoleModel(sequelize)
 // establish relationships
 
 // season - sale : 1 - N
@@ -59,7 +61,7 @@ Sale.belongsTo(User, {
   as: "user",
 });
 
-User_Season_Rank.belongsTo(User, {
+Role.belongsTo(User, {
   foreignKey: {
     name: "user_id",
     allowNull: false,
@@ -86,9 +88,20 @@ User_Season_Rank.belongsTo(Rank, {
   },
   as: "rank",
 });
+User_Season_Rank.belongsTo(User, {
+  foreignKey: {
+    name: "user_id",
+    allowNull: false,
+    onDelete: "RESTRICT",
+    onUpdate: "CASCADE",
+  },
+  as: "user",
+});
 
+
+// Season.hasMany(Sale, { foreignKey: 'season_id' })
 if (process.env.MIGRATE_DB == "TRUE") {
-  sequelize.sync().then(() => {
+  sequelize.sync({ alter: true }).then(() => {
     console.log(`All tables synced!`);
     process.exit(0);
   });
@@ -101,4 +114,4 @@ module.exports = {
   Season,
   Rank,
   User_Season_Rank
-};
+}

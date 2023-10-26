@@ -1,6 +1,7 @@
 require('dotenv').config();
 // Load model
 const { User } = require('../db');
+const { Role } = require('../db');
 const { Op } = require('sequelize');
 
 const utils = require('../utils');
@@ -8,6 +9,8 @@ const nodemailer = require('nodemailer');
 const bcrypt = require('bcryptjs');
 const crypto = require('crypto');
 const jwt = require('jsonwebtoken');
+const { ROLE } = require('../models/Role');
+const { getPageSize } = require('../services/utils');
 
 // SignUp
 module.exports.signUp = async (req, res, next) => {
@@ -125,7 +128,7 @@ module.exports.signUpVerify = async (req, res, next) => {
 };
 
 // Login
-module.exports.login = async (req, res, next) => {
+module.exports.loginUser = async (req, res, next) => {
 	try {
 		const phone_number = req.body.phone_number;
 		const password = req.body.password;
@@ -138,33 +141,140 @@ module.exports.login = async (req, res, next) => {
 		});
 
 		if (user) {
-			const isMatched = await bcrypt.compare(password, user.password);
+			const roleUser = await Role.findOne({
+				where: {
+					user_id: user.id
+				},
+			});
+			if (roleUser && roleUser.role_id === ROLE.NORMAL_USER) {
+				const isMatched = await bcrypt.compare(password, user.password);
 
-			if (isMatched === true) {
-				var userData = {
-					id: user.id,
-					email: user.email,
-					first_name: user.first_name,
-					last_name: user.last_name,
-					bio: user.bio,
-					phone_number: user.phone_number
-				};
-				return res.json({
-					user: userData,
-					token: jwt.sign(userData, process.env.AUTH_SECRET, {
-						expiresIn: '2h',
-					}), // Expires in 2 Hour
-				});
-			} else {
-				let err = new Error('Invalid email or password entered');
+				if (isMatched === true) {
+					var userData = {
+						id: user.id,
+						email: user.email,
+						first_name: user.first_name,
+						last_name: user.last_name,
+						bio: user.bio,
+						phone_number: user.phone_number
+					};
+					return res.json({
+						user: userData,
+						token: jwt.sign(userData, process.env.AUTH_SECRET, {
+							expiresIn: '2h',
+						}), // Expires in 2 Hour
+					});
+				} else {
+					let err = new Error('Invalid Phone number or password entered');
+					err.field = 'login';
+					return next(err);
+				}
+			}
+			else {
+				let err = new Error('Account is not a normal user');
 				err.field = 'login';
 				return next(err);
 			}
 		} else {
-			let err = new Error('Invalid email or password entered');
+			let err = new Error('Invalid Phone number or password entered');
 			err.field = 'login';
 			return next(err);
 		}
+	} catch (err) {
+		return next(err);
+	}
+};
+module.exports.loginAdmin = async (req, res, next) => {
+	try {
+		const phone_number = req.body.phone_number;
+		const password = req.body.password;
+
+		const user = await User.findOne({
+			where: {
+				phone_number: phone_number,
+				is_verified: 1,
+			},
+		});
+
+		if (user) {
+			const roleAdmin = await Role.findOne({
+				where: {
+					user_id: user.id
+				},
+			});
+			if (roleAdmin && roleAdmin.role_id === ROLE.ADMIN) {
+				const isMatched = await bcrypt.compare(password, user.password);
+
+				if (isMatched === true) {
+					var userData = {
+						id: user.id,
+						email: user.email,
+						first_name: user.first_name,
+						last_name: user.last_name,
+						bio: user.bio,
+						phone_number: user.phone_number
+					};
+					return res.json({
+						user: userData,
+						token: jwt.sign(userData, process.env.AUTH_SECRET, {
+							expiresIn: '2h',
+						}), // Expires in 2 Hour
+					});
+				} else {
+					let err = new Error('Invalid Phone number or password entered');
+					err.field = 'login';
+					return next(err);
+				}
+			}
+			else {
+				let err = new Error('Account is not a Admin');
+				err.field = 'login';
+				return next(err);
+			}
+		} else {
+			let err = new Error('Invalid Phone number or password entered');
+			err.field = 'login';
+			return next(err);
+		}
+	} catch (err) {
+		return next(err);
+	}
+};
+module.exports.getListUsers = async (req, res, next) => {
+	const { page, size } = getPageSize(req.query.page, req.query.size)
+	try {
+
+		const roleUser = await Role.findAll({
+			include: [{ model: User, as: "user" }],
+			where: {
+				role_id: ROLE.NORMAL_USER
+			},
+		});
+		const usersAll = roleUser.map(item => item.user)
+		const usersRes = usersAll.filter((item, index) => {
+			return index >= size * (page - 1) && index <= size * page - 1
+		})
+
+		return res.json({
+			data: usersRes,
+			page,
+			size,
+		});
+	} catch (err) {
+		return next(err);
+	}
+};
+module.exports.getDetailUser = async (req, res, next) => {
+	const user_id = req.params.id || ''
+	try {
+
+		const user = await User.findOne({
+			where: {
+				id: user_id
+			},
+		});
+
+		return res.json(user);
 	} catch (err) {
 		return next(err);
 	}
@@ -180,7 +290,7 @@ module.exports.getLoggedInUser = (req, res, next) => {
 			process.env.AUTH_SECRET,
 			(err, decoded) => {
 				if (err) {
-					let err = new Error('Unauthorized');
+					let err = new Error('Bạn đang không đăng nhập');
 					err.field = 'login';
 					return next(err);
 				} else {
@@ -189,7 +299,7 @@ module.exports.getLoggedInUser = (req, res, next) => {
 			}
 		);
 	} else {
-		let err = new Error('Unauthorized');
+		let err = new Error('Bạn đang không đăng nhập');
 		err.field = 'login';
 		return next(err);
 	}

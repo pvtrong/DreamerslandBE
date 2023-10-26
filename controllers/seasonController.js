@@ -6,8 +6,8 @@ module.exports.createManySale;
 // get all season
 module.exports.getAllSeason = async (req, res, next) => {
   try {
-    let { season_name, limit, page } = req.query;
-    if (!season_name) season_name = "";
+    let { keyword, limit, page } = req.query;
+    if (!keyword) keyword = "";
     if (isNaN(page) || !page || !Number.isInteger(Number(page))) {
       page = 1;
     }
@@ -18,19 +18,33 @@ module.exports.getAllSeason = async (req, res, next) => {
     const listSeason = await Season.findAll({
       where: {
         season_name: {
-          [Op.like]: `%${season_name}%`,
+          [Op.like]: `%${keyword}%`,
         },
       },
       limit: Number(limit),
       offset: offset,
     });
+
+    listSeason.forEach((item) => {
+      if (
+        new Date(item.start_date).getDate() <= new Date().getDate() &&
+        new Date(item.end_date).getDate() >= new Date().getDate()
+        ) {
+          item.dataValues.is_current_season = true;
+        } else {
+          item.dataValues.is_current_season = false;
+        }
+        console.log(item)
+    });
+
     const totalSeason = await Season.count({
       where: {
         season_name: {
-          [Op.like]: `%${season_name}%`,
+          [Op.like]: `%${keyword}%`,
         },
       },
     });
+
     const totalPages = Math.ceil(totalSeason / limit);
 
     res.status(200).json({
@@ -54,3 +68,55 @@ module.exports.getDeitailSeason = async (req, res, next) => {
     next(error);
   }
 };
+
+// create season
+module.exports.createSeason = async (req, res, next) => {
+  try {
+    const { season_name, start_date, end_date } = req.body;
+    const newSeason = await Season.create({
+      season_name,
+      start_date,
+      end_date,
+    });
+    res.status(201).json(newSeason);
+  } catch (error) {
+    next(error);
+  }
+}
+
+// edit season
+module.exports.editSeason = async (req, res, next) => {
+  try {
+    const { id, season_name, start_date, end_date } = req.body;
+    const editSeason = await Season.update(
+      {
+        season_name,
+        start_date,
+        end_date,
+      },
+      {
+        where: {
+          id,
+        },
+      }
+    );
+    res.status(200).json(editSeason);
+  } catch (error) {
+    next(error);
+  }
+}
+
+// delete season
+module.exports.deleteSeason = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const deletedSeason = await Season.destroy({
+      where: {
+        id,
+      },
+    });
+    res.status(200).json(deletedSeason);
+  } catch (error) {
+    next(error);
+  }
+}
