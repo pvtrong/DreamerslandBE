@@ -1,31 +1,34 @@
 require("dotenv").config();
 // Load model
-const { Sale } = require("../db");
-const { Season, User } = require("../db");
-const { Op, fn, col } = require("sequelize");
+const { Sale, Rank } = require("../db");
+const { Season, User, User_Season_Rank } = require("../db");
+const { Op, fn, col, where } = require("sequelize");
 
 const utils = require("../utils");
 const nodemailer = require("nodemailer");
 var formidable = require("formidable");
 var fs = require("fs");
 const moment = require("moment");
+const { ppid } = require("process");
 module.exports.createManySale;
 // create many
 module.exports.createManySale = async (req, res, next) => {
-  const { amount, point, users, season_id, date_time } = req.body;
-  // return res.status(200).json({})
+  const { amount, users, season_id, date_time } = req.body;
   try {
     let listNewSale = [];
-    users.forEach((item, index) => {
+    for (let i = 0; i < users.length; i++) {
+      const id = users[i];
+      const point = await getPoint(season_id, id, amount, next);
       const newSale = {
         season_id,
         point,
         amount,
-        user_id: item,
+        user_id: id,
         date_time,
       };
+      await updateRankUser(season_id, id, newSale);
       listNewSale.push(newSale);
-    });
+    }
 
     const newSale = await Sale.bulkCreate(listNewSale);
     return res.status(201).json(newSale);
@@ -38,13 +41,30 @@ module.exports.createManySale = async (req, res, next) => {
 module.exports.updateManySale = async (req, res, next) => {
   const listId = req.body.ids;
   delete req.body.ids;
-  console.log(listId);
   try {
-    const updateData = await Sale.update(req.body, {
-      where: {
-        id: listId,
-      },
-    });
+    for (let i = 0; i < listId.length; i++) {
+      let detail = await Sale.findByPk(listId[i]);
+      if (!detail) return next("Error");
+      detail = detail.toJSON();
+      const { season_id, user_id } = detail;
+      const point = await getPoint(season_id, user_id, req.body.amount, next);
+      await Sale.update(
+        {
+          ...req.body,
+          point,
+        },
+        {
+          where: {
+            id: listId[i],
+          },
+        }
+      );
+    }
+    // const updateData = await Sale.update(req.body, {
+    //   where: {
+    //     id: listId,
+    //   },
+    // });
     return res.status(200).json("success");
   } catch (error) {
     next(error);
@@ -84,7 +104,7 @@ module.exports.searchSales = async (req, res, next) => {
     if (isNaN(page) || !page || !Number.isInteger(Number(page))) {
       page = 1;
     }
-    if (isNaN(limit) || !limit||!Number.isInteger(Number(limit))) {
+    if (isNaN(limit) || !limit || !Number.isInteger(Number(limit))) {
       limit = 30;
     }
     const offset = (Number(page) - 1) * Number(limit);
@@ -120,8 +140,7 @@ module.exports.searchSales = async (req, res, next) => {
         {
           model: User,
           as: "user",
-          attributes:{ exclude:  ["token", "password"], }
-          
+          attributes: { exclude: ["token", "password"] },
         }, // Bổ sung thông tin từ mối quan hệ "user"
       ],
     });
@@ -166,5 +185,152 @@ module.exports.getSaleById = async (req, res, next) => {
   } catch (error) {
     // Xử lý lỗi nếu có lỗi trong quá trình truy vấn
     next(error);
+  }
+};
+
+// Get Point
+const getPoint = async (season_id, user_id, amount, next) => {
+  try {
+    // get rank user
+    let currentRank = await User_Season_Rank.findOne({
+      where: {
+        season_id,
+        user_id,
+      },
+      include: [
+        {
+          model: Rank,
+          as: "rank",
+        },
+      ],
+    });
+    if (!currentRank) {
+      next({
+        statusCode: 400,
+        message: "Không tìm thấy rank ứng với user và season hiện tại",
+      });
+    }
+    currentRank = currentRank.toJSON();
+    const target_day = currentRank.rank.target_day;
+
+    // Tính điểm
+    //cộng X2 doanh số vượt
+    if (amount > target_day) {
+      return Math.round((amount + 2 * (amount - target_day)) / 1000000);
+    }
+    // Thấp hơn bị trừ
+    if (amount < target_day) {
+      const moneyFinal = amount - (target_day - amount);
+      return Math.round(moneyFinal / 1000000);
+    }
+
+    // Bằng
+    return Math.round(amount / 1000000);
+  } catch (error) {
+    next(error);
+  }
+};
+
+// Update rank user
+
+const updateRankUser = async (season_id, user_id, newSale) => {
+  let rank = 1;
+  let point = 0;
+  let listSale = await Sale.findAll({
+    where: {
+      season_id,
+      user_id,
+    },
+    raw: true,
+  });
+  listSale.push(newSale);
+  listSale.sort((a, b) => a.date_time - b.date_time);
+  for (let i = 0; i < listSale.length; i++) {
+    point += listSale[i].point;
+
+    if (point >= 100) {
+      // check 3 ngày chuỗi
+      // chưa đủ 3 ngày để check thì rank vẫn giữ nguyên
+      if (!listSale[i + 1]) {
+        break;
+      } else {
+        if (!(await checkCompletedTarget(listSale[i + 1].amount, rank))) {
+          point = 75;
+          i += 1;
+          continue;
+        }
+      }
+
+      if (!listSale[i + 2]) {
+        break;
+      } else {
+        if (!(await checkCompletedTarget(listSale[i + 2].amount, rank))) {
+          point = 75;
+          i += 2;
+          continue;
+        }
+      }
+      if (!listSale[i + 3]) {
+        break;
+      } else {
+        if (!(await checkCompletedTarget(listSale[i + 3].amount, rank))) {
+          point = 75;
+          i += 3;
+          continue;
+        } else {
+          // cập nhật lại rank
+          rank += 1;
+          point = 0;
+          continue;
+        }
+      }
+    }
+
+    // Xuống rank
+    if (point <= 0) {
+      if (rank > 1) {
+        rank--;
+        point = 75;
+      }
+    }
+  }
+
+  // kêt thúc vòng for sẽ có rank hiện tại bằng giá trị biến rank, đối chiếu với order
+  const listRank = await Rank.findAll({
+    order: [["order", "DESC"]],
+    raw: true,
+  });
+  const maxOrder = listRank[0].order;
+  console.log(maxOrder,rank)
+  //cập nhật lại rank
+  if (rank !== maxOrder) {
+    console.log("update")
+    const newIdRank = listRank.find((i) => i.order == rank).id;
+    User_Season_Rank.update(
+      {
+        rank_id: newIdRank,
+      },
+      {
+        where: {
+          season_id,
+          user_id,
+        },
+      }
+    );
+  }
+};
+// checkCompleted target
+const checkCompletedTarget = async (amount, order) => {
+  try {
+    let rank = await Rank.findOne({
+      where: {
+        order,
+      },
+    });
+    rank = rank.toJSON();
+
+    return amount >= rank.target_day;
+  } catch (error) {
+    console.log(error);
   }
 };

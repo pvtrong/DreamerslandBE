@@ -7,7 +7,7 @@ const sequelize = new Sequelize(
   process.env.DB_PASSWORD,
   {
     host: process.env.DB_HOST,
-    dialect: 'mysql' /* 'mysql' | 'mariadb' | 'postgres' | 'mssql' */,
+    dialect: "mysql" /* 'mysql' | 'mariadb' | 'postgres' | 'mssql' */,
   }
 );
 
@@ -26,12 +26,15 @@ const { UserModel } = require("./models/User");
 const { SaleModel } = require("./models/Sale");
 const { SeasonModel } = require("./models/Season");
 const { RankModel } = require("./models/Rank");
+const { User_Season_Rank_Model } = require("./models/User_Season_Rank");
+
 const { RoleModel } = require("./models/Role");
 
 const Task = TaskModel(sequelize);
 const Sale = SaleModel(sequelize);
 const Season = SeasonModel(sequelize);
 const User = UserModel(sequelize);
+const User_Season_Rank = User_Season_Rank_Model(sequelize);
 const Rank = RankModel(sequelize)
 const Role = RoleModel(sequelize)
 // establish relationships
@@ -67,6 +70,34 @@ Role.belongsTo(User, {
   },
   as: "user",
 });
+User_Season_Rank.belongsTo(Season, {
+  foreignKey: {
+    name: "season_id",
+    allowNull: false,
+    onDelete: "RESTRICT",
+    onUpdate: "CASCADE",
+  },
+  as: "season",
+});
+User_Season_Rank.belongsTo(Rank, {
+  foreignKey: {
+    name: "rank_id",
+    allowNull: false,
+    onDelete: "RESTRICT",
+    onUpdate: "CASCADE",
+  },
+  as: "rank",
+});
+User_Season_Rank.belongsTo(User, {
+  foreignKey: {
+    name: "user_id",
+    allowNull: false,
+    onDelete: "RESTRICT",
+    onUpdate: "CASCADE",
+  },
+  as: "user",
+});
+
 
 // Season.hasMany(Sale, { foreignKey: 'season_id' })
 if (process.env.MIGRATE_DB == "TRUE") {
@@ -82,5 +113,5 @@ module.exports = {
   Sale,
   Season,
   Rank,
-  Role
-};
+  User_Season_Rank
+}
