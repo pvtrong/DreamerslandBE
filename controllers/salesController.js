@@ -1,7 +1,7 @@
 require("dotenv").config();
 // Load model
-const { Sale } = require("../db");
-const { Season, User } = require("../db");
+const { Sale, Rank } = require("../db");
+const { Season, User, User_Season_Rank } = require("../db");
 const { Op, fn, col } = require("sequelize");
 
 const utils = require("../utils");
@@ -12,20 +12,24 @@ const moment = require("moment");
 module.exports.createManySale;
 // create many
 module.exports.createManySale = async (req, res, next) => {
-  const { amount, point, users, season_id, date_time } = req.body;
-  // return res.status(200).json({})
+  const { amount, users, season_id, date_time } = req.body;
+  console.log(users);
   try {
     let listNewSale = [];
-    users.forEach((item, index) => {
+    for (let i = 0; i < users.length; i++) {
+      const id = users[i];
+      const point = await getPoint(season_id, id, amount, next);
+      console.log(point);
       const newSale = {
         season_id,
         point,
         amount,
-        user_id: item,
+        user_id: id,
         date_time,
       };
+
       listNewSale.push(newSale);
-    });
+    }
 
     const newSale = await Sale.bulkCreate(listNewSale);
     return res.status(201).json(newSale);
@@ -38,7 +42,6 @@ module.exports.createManySale = async (req, res, next) => {
 module.exports.updateManySale = async (req, res, next) => {
   const listId = req.body.ids;
   delete req.body.ids;
-  console.log(listId);
   try {
     const updateData = await Sale.update(req.body, {
       where: {
@@ -84,7 +87,7 @@ module.exports.searchSales = async (req, res, next) => {
     if (isNaN(page) || !page || !Number.isInteger(Number(page))) {
       page = 1;
     }
-    if (isNaN(limit) || !limit||!Number.isInteger(Number(limit))) {
+    if (isNaN(limit) || !limit || !Number.isInteger(Number(limit))) {
       limit = 30;
     }
     const offset = (Number(page) - 1) * Number(limit);
@@ -120,8 +123,7 @@ module.exports.searchSales = async (req, res, next) => {
         {
           model: User,
           as: "user",
-          attributes:{ exclude:  ["token", "password"], }
-          
+          attributes: { exclude: ["token", "password"] },
         }, // Bổ sung thông tin từ mối quan hệ "user"
       ],
     });
@@ -165,6 +167,49 @@ module.exports.getSaleById = async (req, res, next) => {
     }
   } catch (error) {
     // Xử lý lỗi nếu có lỗi trong quá trình truy vấn
+    next(error);
+  }
+};
+
+// Get Point
+const getPoint = async (season_id, user_id, amount, next) => {
+  try {
+    // get rank user
+    let currentRank = await User_Season_Rank.findOne({
+      where: {
+        season_id,
+        user_id,
+      },
+      include: [
+        {
+          model: Rank,
+          as: "rank",
+        },
+      ],
+    });
+    if (!currentRank) {
+      next({
+        statusCode: 400,
+        message: "Không tìm thấy rank ứng với user và season hiện tại",
+      });
+    }
+    currentRank = currentRank.toJSON();
+    const target_day = currentRank.rank.target_day;
+
+    // Tính điểm
+    //cộng X2 doanh số vượt
+    if (amount > target_day) {
+      return Math.round((amount + 2 * (amount - target_day)) / 1000000);
+    }
+    // Thấp hơn bị trừ
+    if (amount < target_day) {
+      const moneyFinal = amount - (target_day - amount);
+      return Math.round(moneyFinal / 1000000);
+    }
+
+    // Bằng
+    return Math.round(amount / 1000000);
+  } catch (error) {
     next(error);
   }
 };
