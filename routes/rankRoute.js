@@ -12,7 +12,6 @@ const { checkUniqueRankName, validationCreateRank, validationUpdateRank, checkVa
 router.post(
   "/rank",
   configUpload.uploadCloud.single("image"),
-  checkPoint,
   validationCreateRank,
   checkUniqueRankName,
  rankController.createRank
@@ -22,7 +21,6 @@ router.put(
     "/rank",
     configUpload.uploadCloud.single("image"),
     checkValidId,
-    checkPoint,
     validationUpdateRank,
     checkUniqueRankName,
    rankController.editRank

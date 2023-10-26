@@ -9,14 +9,14 @@ const { Op, fn, col, literal } = require("sequelize");
 // Schema - Create
 let rankCreate = yup.object().shape({
   rank_name: yup.string().required("Tên hạng không được để trống"),
-  min_point: yup
+  target_day: yup
     .number()
-    .typeError("Min point phải là số")
-    .required("Min point không được để trống"),
-  max_point: yup
+    .typeError("Mục tiêu doanh thu 1 ngày phải là số")
+    .required("Mục tiêu doanh thu không được để trống"),
+    order: yup
     .number()
-    .typeError("Max point phải là số")
-    .required("Max point không được để trống"),
+    .typeError("Mục tiêu doanh thu 1 ngày phải là số")
+    .required("Mục tiêu doanh thu không được để trống"),
 });
 
 let rankUpdate = yup.object().shape({
@@ -25,14 +25,14 @@ let rankUpdate = yup.object().shape({
     .integer("ID phải là số nguyên")
     .required("ID không được để trống"),
   rank_name: yup.string().nullable().notRequired(),
-  min_point: yup
+  target_day: yup
     .number()
-    .typeError("Min point phải là số")
+    .typeError("Mục tiêu doanh thu 1 ngày phải là số")
     .nullable()
     .notRequired(),
-  max_point: yup
+    order: yup
     .number()
-    .typeError("Max point phải là số")
+    .typeError("Mục tiêu doanh thu 1 ngày phải là số")
     .nullable()
     .notRequired(),
 });
@@ -68,7 +68,7 @@ module.exports.checkValidId = async (req, res, next) => {
     if (!rankItem) {
       return next({ statusCode: 400, message: "Không tồn tại rank" });
     }
-    next()
+    next();
   } catch (error) {
     next(error);
   }
@@ -100,11 +100,13 @@ module.exports.checkPoint = async (req, res, next) => {
       }
       const allRank = await Rank.findAll({
         raw: true,
-        where: id ? {
-            id: {
-              [Op.ne]: id, 
-            },
-          }:{},
+        where: id
+          ? {
+              id: {
+                [Op.ne]: id,
+              },
+            }
+          : {},
       });
       const conflictRank = allRank.find((rankItem) => {
         return (

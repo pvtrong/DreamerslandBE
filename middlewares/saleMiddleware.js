@@ -11,7 +11,6 @@ let schemaCreateSale = yup.object().shape({
   // mảng số nguyên
   users: yup.array().of(yup.number().integer()).required(),
   amount: yup.number().positive().required(),
-  point: yup.number().required(),
   date_time: yup.date().nullable(),
   season_id: yup.number().positive().required(),
 });
@@ -21,7 +20,6 @@ let schemaUpdate = yup.object().shape({
   ids: yup.array().of(yup.number().integer()).required(),
 
   amount: yup.number().positive().required(),
-  point: yup.number().required(),
   date_time: yup.date().nullable(),
   season_id: yup.number().positive().required(),
 });

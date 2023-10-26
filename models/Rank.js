@@ -15,16 +15,16 @@ module.exports.RankModel = (sequelize) => {
         allowNull: false,
         unique: true,
       },
-      min_point: {
-        type: DataTypes.DOUBLE,
-        allowNull: false,
-      },
-      max_point: {
+      target_day: {
         type: DataTypes.DOUBLE,
         allowNull: false,
       },
       image_url: {
         type: DataTypes.STRING,
+        allowNull: false,
+      },
+      order: {
+        type: DataTypes.INTEGER,
         allowNull: false,
       },
     },
