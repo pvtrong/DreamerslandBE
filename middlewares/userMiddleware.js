@@ -213,6 +213,28 @@ module.exports.isUserExistsUpdate = async (req, res, next) => {
 		return next(err);
 	}
 };
+module.exports.isUserExistsUpdateForAdmin = async (req, res, next) => {
+	console.log('🐞 isUserExistsUpdateForAdmin');
+
+	try {
+		const idUser = req.params.id || '';
+		const user = await User.findOne({
+			where: {
+				phone_number: idUser
+			},
+		});
+
+		if (user) {
+			let err = new Error('User does not exist');
+			err.field = 'id';
+			return next(err);
+		}
+
+		next();
+	} catch (err) {
+		return next(err);
+	}
+};
 
 // ========================================================================
 
