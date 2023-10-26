@@ -241,24 +241,35 @@ module.exports.loginAdmin = async (req, res, next) => {
 	}
 };
 module.exports.getListUsers = async (req, res, next) => {
-	const { page, size } = getPageSize(req.query.page, req.query.size)
+	const { page, limit } = getPageSize(req.query.page, req.query.limit)
+	const search = req.query.search || '';
 	try {
-
-		const roleUser = await Role.findAll({
+		const queryCount = {
 			include: [{ model: User, as: "user" }],
 			where: {
-				role_id: ROLE.NORMAL_USER
+				role_id: ROLE.NORMAL_USER,
+				[Op.or]: [
+					{ '$user.first_name$': { [Op.like]: `%${search}%`, } },
+					{ '$user.last_name$': { [Op.like]: `%${search}%`, } },
+					{ '$user.bio$': { [Op.like]: `%${search}%`, } },
+					{ '$user.email$': { [Op.like]: `%${search}%`, } },
+					{ '$user.phone_number$': { [Op.like]: `%${search}%`, }, }
+				],
 			},
+		}
+		const totalCount = await Role.count(queryCount);
+		const roleUser = await Role.findAll({
+			...queryCount,
+			limit: Number(limit),
+			offset: limit * (page - 1),
 		});
 		const usersAll = roleUser.map(item => item.user)
-		const usersRes = usersAll.filter((item, index) => {
-			return index >= size * (page - 1) && index <= size * page - 1
-		})
 
 		return res.json({
-			data: usersRes,
+			data: usersAll,
+			total: totalCount,
 			page,
-			size,
+			totalPages: Math.ceil(totalCount / limit),
 		});
 	} catch (err) {
 		return next(err);
