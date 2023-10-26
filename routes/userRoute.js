@@ -9,6 +9,7 @@ const {
 	authenticateToken,
 	validationUpdateProfile,
 	isUserExistsUpdate,
+	isUserExistsUpdateForAdmin,
 	validationChangePassword,
 	validationForgotPassword,
 	isEmailRegistered,
@@ -36,6 +37,11 @@ router.post(
 	'/user/update_profile',
 	[authenticateToken, validationUpdateProfile, isUserExistsUpdate],
 	usersController.updateProfile
+);
+router.post(
+	'/admin/update_profile/:id',
+	[authenticateToken, validationUpdateProfile, isAdmin, isUserExistsUpdateForAdmin],
+	usersController.updateProfileUser
 );
 router.post(
 	'/user/change_password',

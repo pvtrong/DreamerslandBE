@@ -340,6 +340,40 @@ module.exports.updateProfile = async (req, res, next) => {
 		return next(err);
 	}
 };
+module.exports.updateProfileUser = async (req, res, next) => {
+	try {
+		var id = req.params.id || '';
+		var first_name = req.body.first_name;
+		var last_name = req.body.last_name;
+		var bio = req.body.bio;
+		var email = req.body.email;
+		var phone_number = req.body.phone_number;
+
+		const result = User.update(
+			{
+				first_name: first_name,
+				last_name: last_name,
+				bio: bio,
+				email: email,
+				phone_number: phone_number,
+			},
+			{
+				where: {
+					id: {
+						[Op.eq]: id,
+					},
+				},
+			}
+		);
+
+		return res.json({
+			status: 'success',
+			result: req.body,
+		});
+	} catch (err) {
+		return next(err);
+	}
+};
 
 // Change Password
 module.exports.changePassword = (req, res, next) => {
