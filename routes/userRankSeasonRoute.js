@@ -6,4 +6,5 @@ const userRankSeasonController = require('../controllers/userRankSeasonControlle
 
 router.post('/user-rank-season', userRankSeasonController.CreateUserRankSeason);
 
+
 module.exports = router;

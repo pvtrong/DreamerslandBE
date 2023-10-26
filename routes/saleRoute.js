@@ -27,7 +27,7 @@ router.post(
 router.put(
     "/sales",
     validationUpdateSale,
-    checkSeason,
+    // checkSeason,
     checkListIdUpdate,
     saleController.updateManySale,
   );

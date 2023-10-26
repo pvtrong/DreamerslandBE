@@ -18,10 +18,9 @@ let schemaCreateSale = yup.object().shape({
 let schemaUpdate = yup.object().shape({
   // mảng số nguyên
   ids: yup.array().of(yup.number().integer()).required(),
-
   amount: yup.number().positive().required(),
   date_time: yup.date().nullable(),
-  season_id: yup.number().positive().required(),
+  season_id: yup.number().positive().nullable(),
 });
 
 // Validation - Create

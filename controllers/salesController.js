@@ -2,24 +2,23 @@ require("dotenv").config();
 // Load model
 const { Sale, Rank } = require("../db");
 const { Season, User, User_Season_Rank } = require("../db");
-const { Op, fn, col } = require("sequelize");
+const { Op, fn, col, where } = require("sequelize");
 
 const utils = require("../utils");
 const nodemailer = require("nodemailer");
 var formidable = require("formidable");
 var fs = require("fs");
 const moment = require("moment");
+const { ppid } = require("process");
 module.exports.createManySale;
 // create many
 module.exports.createManySale = async (req, res, next) => {
   const { amount, users, season_id, date_time } = req.body;
-  console.log(users);
   try {
     let listNewSale = [];
     for (let i = 0; i < users.length; i++) {
       const id = users[i];
       const point = await getPoint(season_id, id, amount, next);
-      console.log(point);
       const newSale = {
         season_id,
         point,
@@ -27,7 +26,7 @@ module.exports.createManySale = async (req, res, next) => {
         user_id: id,
         date_time,
       };
-
+      await updateRankUser(season_id, id, newSale);
       listNewSale.push(newSale);
     }
 
@@ -43,11 +42,29 @@ module.exports.updateManySale = async (req, res, next) => {
   const listId = req.body.ids;
   delete req.body.ids;
   try {
-    const updateData = await Sale.update(req.body, {
-      where: {
-        id: listId,
-      },
-    });
+    for (let i = 0; i < listId.length; i++) {
+      let detail = await Sale.findByPk(listId[i]);
+      if (!detail) return next("Error");
+      detail = detail.toJSON();
+      const { season_id, user_id } = detail;
+      const point = await getPoint(season_id, user_id, req.body.amount, next);
+      await Sale.update(
+        {
+          ...req.body,
+          point,
+        },
+        {
+          where: {
+            id: listId[i],
+          },
+        }
+      );
+    }
+    // const updateData = await Sale.update(req.body, {
+    //   where: {
+    //     id: listId,
+    //   },
+    // });
     return res.status(200).json("success");
   } catch (error) {
     next(error);
@@ -211,5 +228,109 @@ const getPoint = async (season_id, user_id, amount, next) => {
     return Math.round(amount / 1000000);
   } catch (error) {
     next(error);
+  }
+};
+
+// Update rank user
+
+const updateRankUser = async (season_id, user_id, newSale) => {
+  let rank = 1;
+  let point = 0;
+  let listSale = await Sale.findAll({
+    where: {
+      season_id,
+      user_id,
+    },
+    raw: true,
+  });
+  listSale.push(newSale);
+  listSale.sort((a, b) => a.date_time - b.date_time);
+  for (let i = 0; i < listSale.length; i++) {
+    point += listSale[i].point;
+
+    if (point >= 100) {
+      // check 3 ngày chuỗi
+      // chưa đủ 3 ngày để check thì rank vẫn giữ nguyên
+      if (!listSale[i + 1]) {
+        break;
+      } else {
+        if (!(await checkCompletedTarget(listSale[i + 1].amount, rank))) {
+          point = 75;
+          i += 1;
+          continue;
+        }
+      }
+
+      if (!listSale[i + 2]) {
+        break;
+      } else {
+        if (!(await checkCompletedTarget(listSale[i + 2].amount, rank))) {
+          point = 75;
+          i += 2;
+          continue;
+        }
+      }
+      if (!listSale[i + 3]) {
+        break;
+      } else {
+        if (!(await checkCompletedTarget(listSale[i + 3].amount, rank))) {
+          point = 75;
+          i += 3;
+          continue;
+        } else {
+          // cập nhật lại rank
+          rank += 1;
+          point = 0;
+          continue;
+        }
+      }
+    }
+
+    // Xuống rank
+    if (point <= 0) {
+      if (rank > 1) {
+        rank--;
+        point = 75;
+      }
+    }
+  }
+
+  // kêt thúc vòng for sẽ có rank hiện tại bằng giá trị biến rank, đối chiếu với order
+  const listRank = await Rank.findAll({
+    order: [["order", "DESC"]],
+    raw: true,
+  });
+  const maxOrder = listRank[0].order;
+  console.log(maxOrder,rank)
+  //cập nhật lại rank
+  if (rank !== maxOrder) {
+    console.log("update")
+    const newIdRank = listRank.find((i) => i.order == rank).id;
+    User_Season_Rank.update(
+      {
+        rank_id: newIdRank,
+      },
+      {
+        where: {
+          season_id,
+          user_id,
+        },
+      }
+    );
+  }
+};
+// checkCompleted target
+const checkCompletedTarget = async (amount, order) => {
+  try {
+    let rank = await Rank.findOne({
+      where: {
+        order,
+      },
+    });
+    rank = rank.toJSON();
+
+    return amount >= rank.target_day;
+  } catch (error) {
+    console.log(error);
   }
 };
