@@ -42,6 +42,10 @@ module.exports.signUp = async (req, res, next) => {
 			email: email,
 			phone_number: phone_number,
 		}
+		const roleUser = await Role.create({
+			role_id: ROLE.NORMAL_USER,
+			user_id: record.id,
+		});
 		return res.json({
 			status: 'success',
 			result: {
@@ -245,7 +249,7 @@ module.exports.getListUsers = async (req, res, next) => {
 	const search = req.query.search || '';
 	try {
 		const queryCount = {
-			include: [{ model: User, as: "user" }],
+			include: [{ model: User, as: "user", attributes: { exclude: ['password', 'is_verified', 'token'] } }],
 			where: {
 				role_id: ROLE.NORMAL_USER,
 				[Op.or]: [
@@ -262,6 +266,7 @@ module.exports.getListUsers = async (req, res, next) => {
 			...queryCount,
 			limit: Number(limit),
 			offset: limit * (page - 1),
+			attributes: { exclude: ["$user.password$"] },
 		});
 		const usersAll = roleUser.map(item => item.user)
 
@@ -326,7 +331,8 @@ module.exports.updateProfile = async (req, res, next) => {
 		var email = req.body.email;
 		var phone_number = req.body.phone_number;
 
-		const result = User.update(
+
+		const result = await User.update(
 			{
 				first_name: first_name,
 				last_name: last_name,
@@ -345,7 +351,7 @@ module.exports.updateProfile = async (req, res, next) => {
 
 		return res.json({
 			status: 'success',
-			result: req.body,
+			result: result ? req.body : false,
 		});
 	} catch (err) {
 		return next(err);
@@ -360,7 +366,7 @@ module.exports.updateProfileUser = async (req, res, next) => {
 		var email = req.body.email;
 		var phone_number = req.body.phone_number;
 
-		const result = User.update(
+		const result = await User.update(
 			{
 				first_name: first_name,
 				last_name: last_name,
@@ -379,7 +385,7 @@ module.exports.updateProfileUser = async (req, res, next) => {
 
 		return res.json({
 			status: 'success',
-			result: req.body,
+			result: result ? req.body : false,
 		});
 	} catch (err) {
 		return next(err);

@@ -149,18 +149,14 @@ module.exports.isAdmin = async (req, res, next) => {
 
 // Schema - UpdateProfile
 let schemaUpdateProfile = yup.object().shape({
-	first_name: yup.string().required('Please enter first name'),
-	last_name: yup.string().required('Please enter last name'),
+	first_name: yup.string(),
+	last_name: yup.string(),
 	bio: yup.string(),
 	email: yup
 		.string()
-		.required()
-		.required('Please enter Email')
 		.email('Please enter valid Email'),
 	phone_number: yup
 		.string()
-		.required()
-		.required('Please enter Phone Number')
 		.min(10, 'Please enter minimum 10 characters'),
 });
 
@@ -195,14 +191,13 @@ module.exports.isUserExistsUpdate = async (req, res, next) => {
 	try {
 		const user = await User.findOne({
 			where: {
-				phone_number: req.body.phone_number,
 				id: {
 					[Op.ne]: req.user.id,
 				},
 			},
 		});
 
-		if (user) {
+		if (!user) {
 			let err = new Error('Phone Number already registered.');
 			err.field = 'phone_number';
 			return next(err);
@@ -220,11 +215,13 @@ module.exports.isUserExistsUpdateForAdmin = async (req, res, next) => {
 		const idUser = req.params.id || '';
 		const user = await User.findOne({
 			where: {
-				phone_number: idUser
+				id: {
+					[Op.ne]: idUser,
+				},
 			},
 		});
 
-		if (user) {
+		if (!user) {
 			let err = new Error('User does not exist');
 			err.field = 'id';
 			return next(err);
