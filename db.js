@@ -101,7 +101,7 @@ User_Season_Rank.belongsTo(User, {
 
 // Season.hasMany(Sale, { foreignKey: 'season_id' })
 if (process.env.MIGRATE_DB == "TRUE") {
-  sequelize.sync({ alter: true }).then(() => {
+  sequelize.sync().then(() => {
     console.log(`All tables synced!`);
     process.exit(0);
   });
@@ -113,5 +113,6 @@ module.exports = {
   Sale,
   Season,
   Rank,
-  User_Season_Rank
+  User_Season_Rank,
+  Role
 }
