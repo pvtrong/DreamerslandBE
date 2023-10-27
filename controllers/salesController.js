@@ -33,7 +33,7 @@ module.exports.createManySale = async (req, res, next) => {
         date_time,
       };
       // Check xem nếu ứng với season_id, user_id mà chưa có trong bảng Season_user_rank. Thì thêm 1 record mới.
-      // await updateRankUser(season_id, id, newSale, listRank);
+      await updateRankUser(season_id, id, newSale, listRank);
       listNewSale.push(newSale);
     }
 
@@ -67,11 +67,6 @@ module.exports.updateManySale = async (req, res, next) => {
         }
       );
     }
-    // const updateData = await Sale.update(req.body, {
-    //   where: {
-    //     id: listId,
-    //   },
-    // });
     return res.status(200).json("success");
   } catch (error) {
     next(error);
