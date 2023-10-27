@@ -6,8 +6,6 @@ module.exports.User_Season_Rank_Model = (sequelize) => {
 		{
 			point: {
 				type: DataTypes.INTEGER,
-				primaryKey: true,
-				autoIncrement: true,
 				allowNull: false,
               
 			},

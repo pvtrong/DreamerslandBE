@@ -23,7 +23,7 @@ module.exports.createManySale = async (req, res, next) => {
     const minRank = listRank[listRank.length - 1];
     for (let i = 0; i < users.length; i++) {
       const id = users[i];
-      await handleAddRecordUserSeasonRank(id, season_id, minRank);
+      await handleAddRecordUserSeasonRank(season_id, id,minRank);
       const point = await getPoint(season_id, id, amount, next);
       const newSale = {
         season_id,
@@ -124,6 +124,8 @@ module.exports.searchSales = async (req, res, next) => {
     if (user_id) {
       whereClause.user_id = user_id;
     }
+
+    // search theo họ tên nhân, vên số điện thoại
 
     if (date_time) {
       // Chuyển đối số date_time thành khoảng thời gian trong ngày
