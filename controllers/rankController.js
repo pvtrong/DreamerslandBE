@@ -9,8 +9,11 @@ module.exports.createManySale;
 module.exports.createRank = async (req, res, next) => {
   try {
     if (req.file) {
-      console.log(req.file.path);
+      let { order } = req.body;
+      order = Number(order);
       const data = req.body;
+      // check order exits
+      await updateOrder(order);
       data.image_url = req.file.path;
       const result = await Rank.create(data);
       return res.status(201).json(result);
@@ -28,6 +31,11 @@ module.exports.editRank = async (req, res, next) => {
     if (req.file) {
       data.image_url = req.file.path;
     }
+
+    // nếu có cập nhật lại order
+    if (req.body.order) {
+      await updateOrder(req.body.order, "update", req.body.id);
+    }
     const result = await Rank.update(data, {
       where: {
         id: {
@@ -35,7 +43,7 @@ module.exports.editRank = async (req, res, next) => {
         },
       },
     });
-    return res.status(200).json(result);
+    return res.status(200).json("sucess");
   } catch (error) {
     next(error);
   }
@@ -43,7 +51,12 @@ module.exports.editRank = async (req, res, next) => {
 module.exports.deleteRank = async (req, res, next) => {
   const id = req.params.id;
   try {
-    const deleted = await Rank.destroy({
+    const deleted = await Rank.findByPk(id);
+    if (!deleted) {
+      return next({ statusCode: 404, message: "Không tồn tại" });
+    }
+    await updateOrder(deleted.toJSON().order, "delete", id);
+    await Rank.destroy({
       where: {
         id: {
           [Op.eq]: id,
@@ -51,9 +64,6 @@ module.exports.deleteRank = async (req, res, next) => {
       },
     });
 
-    if (!deleted) {
-      return next({ statusCode: 404, message: "Không tồn tại" });
-    }
     res.json({
       status: "success",
       result: {
@@ -70,18 +80,19 @@ module.exports.searchRank = async (req, res, next) => {
     if (isNaN(page) || !page || !Number.isInteger(Number(page))) {
       page = 1;
     }
-    if (isNaN(limit) || !limit||!Number.isInteger(Number(limit))) {
+    if (isNaN(limit) || !limit || !Number.isInteger(Number(limit))) {
       limit = 30;
     }
     const offset = (Number(page) - 1) * Number(limit);
     if (!rank_name) rank_name = "";
 
-
-    const totalRanks = await Rank.count({ where: {
+    const totalRanks = await Rank.count({
+      where: {
         rank_name: {
           [Op.like]: `%${rank_name}%`,
         },
-      }, });
+      },
+    });
     const result = await Rank.findAll({
       where: {
         rank_name: {
@@ -120,3 +131,71 @@ module.exports.getDetailRank = async (req, res, next) => {
     next(error);
   }
 };
+
+/// Update lại order
+const updateOrder = async (order, mode = "create", id) => {
+  let listArrOrder = await Rank.findAll({
+    order: [["order", "ASC"]],
+    raw: true,
+  });
+  let maxOrder;
+  let minOrder;
+
+  if (listArrOrder.length > 0) {
+    maxOrder = listArrOrder[listArrOrder.length - 1].order;
+    minOrder = listArrOrder[0].order;
+    if (order < minOrder) {
+      order = minOrder;
+    }
+    if (order > maxOrder || !order) {
+      order = maxOrder + 1;
+    }
+
+    // check exits
+    const indexExistOrder = listArrOrder.findIndex((i) => i.order == order);
+
+    if (indexExistOrder >= 0 && (mode === "create" || mode === "delete")) {
+      console.log("==================================oOKOKOKO")
+      listArrOrder =
+        mode === "delete"
+          ? listArrOrder.slice(indexExistOrder + 1)
+          : listArrOrder.slice(indexExistOrder);
+          console.log(indexExistOrder)
+    } else if (mode === "update") {
+      listArrOrder = changeOrderUpdate(id, order, listArrOrder);
+    }
+
+    for (let i = 0; i < listArrOrder.length; i++) {
+      const newRank = listArrOrder[i];
+      newRank.order =
+        mode === "create"
+          ? newRank.order + 1
+          : mode === "delete"
+          ? newRank.order - 1
+          : newRank.order;
+      await Rank.update(newRank, {
+        where: {
+          id: newRank.id,
+        },
+      });
+    }
+  }
+};
+
+/// Change Order update Rank
+function changeOrderUpdate(id, order, arr) {
+  const UpdateItem = arr.find((item) => item.id == id);
+
+  if (!UpdateItem) {
+    console.log("==========================================");
+    return arr;
+  }
+
+  const updatedArr = [...arr].filter((i) => i.id != id);
+  updatedArr.splice(order - 1, 0, UpdateItem);
+  for (let i = 0; i < updatedArr.length; i++) {
+    updatedArr[i].order = i + 1;
+  }
+
+  return updatedArr.filter((i) => i.id != id);
+}
