@@ -33,7 +33,7 @@ module.exports.createManySale = async (req, res, next) => {
         date_time,
       };
       // Check xem nếu ứng với season_id, user_id mà chưa có trong bảng Season_user_rank. Thì thêm 1 record mới.
-      await updateRankUser(season_id, id, newSale, listRank);
+      // await updateRankUser(season_id, id, newSale, listRank);
       listNewSale.push(newSale);
     }
 
@@ -211,6 +211,7 @@ const getPoint = async (season_id, user_id, amount, next) => {
           model: Rank,
           as: "rank",
         },
+
       ],
     });
     if (!currentRank) {
@@ -309,19 +310,22 @@ const updateRankUser = async (season_id, user_id, newSale, listRank) => {
   const maxOrder = listRank[0].order;
   const minRank = listRank[listRank.length - 1];
   //cập nhật lại rank
-  if (rank !== maxOrder) {
-    const newIdRank = listRank.find((i) => i.order == rank).id;
-    User_Season_Rank.update(
-      {
-        rank_id: newIdRank,
-      },
-      {
-        where: {
-          season_id,
-          user_id,
+  if (rank != maxOrder) {
+    const newIdRank = listRank.find((i) => i.order == rank);
+    if(newIdRank){
+      User_Season_Rank.update(
+        {
+          rank_id: newIdRank.id,
         },
-      }
-    );
+        {
+          where: {
+            season_id,
+            user_id,
+          },
+        }
+      );
+    }
+    
   }
 };
 // checkCompleted target
