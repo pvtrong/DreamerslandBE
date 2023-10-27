@@ -16,8 +16,14 @@ module.exports.createManySale = async (req, res, next) => {
   const { amount, users, season_id, date_time } = req.body;
   try {
     let listNewSale = [];
+    const listRank = await Rank.findAll({
+      order: [["order", "DESC"]],
+      raw: true,
+    });
+    const minRank = listRank[listRank.length - 1];
     for (let i = 0; i < users.length; i++) {
       const id = users[i];
+      await handleAddRecordUserSeasonRank(id, season_id, minRank);
       const point = await getPoint(season_id, id, amount, next);
       const newSale = {
         season_id,
@@ -26,7 +32,8 @@ module.exports.createManySale = async (req, res, next) => {
         user_id: id,
         date_time,
       };
-      await updateRankUser(season_id, id, newSale);
+      // Check xem nếu ứng với season_id, user_id mà chưa có trong bảng Season_user_rank. Thì thêm 1 record mới.
+      await updateRankUser(season_id, id, newSale, listRank);
       listNewSale.push(newSale);
     }
 
@@ -233,7 +240,7 @@ const getPoint = async (season_id, user_id, amount, next) => {
 
 // Update rank user
 
-const updateRankUser = async (season_id, user_id, newSale) => {
+const updateRankUser = async (season_id, user_id, newSale, listRank) => {
   let rank = 1;
   let point = 0;
   let listSale = await Sale.findAll({
@@ -254,7 +261,7 @@ const updateRankUser = async (season_id, user_id, newSale) => {
       if (!listSale[i + 1]) {
         break;
       } else {
-        if (!(await checkCompletedTarget(listSale[i + 1].amount, rank))) {
+        if (!checkCompletedTarget(listSale[i + 1].amount, listRank, rank)) {
           point = 75;
           i += 1;
           continue;
@@ -264,7 +271,7 @@ const updateRankUser = async (season_id, user_id, newSale) => {
       if (!listSale[i + 2]) {
         break;
       } else {
-        if (!(await checkCompletedTarget(listSale[i + 2].amount, rank))) {
+        if (!checkCompletedTarget(listSale[i + 2].amount, listRank, rank)) {
           point = 75;
           i += 2;
           continue;
@@ -273,7 +280,7 @@ const updateRankUser = async (season_id, user_id, newSale) => {
       if (!listSale[i + 3]) {
         break;
       } else {
-        if (!(await checkCompletedTarget(listSale[i + 3].amount, rank))) {
+        if (!checkCompletedTarget(listSale[i + 3].amount, listRank, rank)) {
           point = 75;
           i += 3;
           continue;
@@ -296,15 +303,11 @@ const updateRankUser = async (season_id, user_id, newSale) => {
   }
 
   // kêt thúc vòng for sẽ có rank hiện tại bằng giá trị biến rank, đối chiếu với order
-  const listRank = await Rank.findAll({
-    order: [["order", "DESC"]],
-    raw: true,
-  });
+
   const maxOrder = listRank[0].order;
-  console.log(maxOrder,rank)
+  const minRank = listRank[listRank.length - 1];
   //cập nhật lại rank
   if (rank !== maxOrder) {
-    console.log("update")
     const newIdRank = listRank.find((i) => i.order == rank).id;
     User_Season_Rank.update(
       {
@@ -320,17 +323,28 @@ const updateRankUser = async (season_id, user_id, newSale) => {
   }
 };
 // checkCompleted target
-const checkCompletedTarget = async (amount, order) => {
-  try {
-    let rank = await Rank.findOne({
-      where: {
-        order,
-      },
-    });
-    rank = rank.toJSON();
-
+const checkCompletedTarget = (amount, listRank, order) => {
+  const rank = listRank.find((i) => i.order == order);
+  if (rank) {
     return amount >= rank.target_day;
-  } catch (error) {
-    console.log(error);
+  }
+  return false;
+};
+
+// handle add record in user_season_rank
+const handleAddRecordUserSeasonRank = async (season_id, user_id, minRank) => {
+  const existRecord = await User_Season_Rank.findOne({
+    where: {
+      season_id,
+      user_id,
+    },
+  });
+  if (!existRecord) {
+    await User_Season_Rank.create({
+      point: 0,
+      season_id,
+      user_id,
+      rank_id: minRank.id,
+    });
   }
 };
