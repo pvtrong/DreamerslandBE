@@ -1,7 +1,10 @@
 require('dotenv').config();
 // Load model
 const { User } = require('../db');
+const { Sale } = require('../db');
 const { Role } = require('../db');
+const { Season } = require('../db');
+const { User_Season_Rank } = require('../db');
 const { Op } = require('sequelize');
 
 const utils = require('../utils');
@@ -11,6 +14,7 @@ const crypto = require('crypto');
 const jwt = require('jsonwebtoken');
 const { ROLE } = require('../models/Role');
 const { getPageSize } = require('../services/utils');
+const { now, cloneDeep } = require('lodash');
 
 // SignUp
 module.exports.signUp = async (req, res, next) => {
@@ -249,31 +253,67 @@ module.exports.getListUsers = async (req, res, next) => {
 	const search = req.query.search || '';
 	try {
 		const queryCount = {
-			include: [{ model: User, as: "user", attributes: { exclude: ['password', 'is_verified', 'token'] } }],
+			attributes: {
+				exclude: ['password', 'is_verified', 'token'],
+			},
+			include: [
+				{
+					model: Role, as: "roles", where: {
+						role_id: ROLE.NORMAL_USER,
+					},
+					required: true,
+					attributes: { exclude: ['user_id', 'createdAt', 'updatedAt'] }
+				},
+				{
+					model: Sale, as: "sales",
+					attributes: { exclude: ['user_id', 'createdAt', 'updatedAt'] },
+				}
+			],
 			where: {
-				role_id: ROLE.NORMAL_USER,
 				[Op.or]: [
-					{ '$user.first_name$': { [Op.like]: `%${search}%`, } },
-					{ '$user.last_name$': { [Op.like]: `%${search}%`, } },
-					{ '$user.bio$': { [Op.like]: `%${search}%`, } },
-					{ '$user.email$': { [Op.like]: `%${search}%`, } },
-					{ '$user.phone_number$': { [Op.like]: `%${search}%`, }, }
+					{ first_name: { [Op.like]: `%${search}%`, } },
+					{ last_name: { [Op.like]: `%${search}%`, } },
+					{ bio: { [Op.like]: `%${search}%`, } },
+					{ email: { [Op.like]: `%${search}%`, } },
+					{ phone_number: { [Op.like]: `%${search}%`, }, }
 				],
 			},
 		}
-		const totalCount = await Role.count(queryCount);
-		const roleUser = await Role.findAll({
+		const currentSeason = await Season.findOne({
+			where: {
+				start_date: { [Op.lte]: now(), },
+				end_date: { [Op.gte]: now(), },
+			},
+		})
+		const userForCount = await User.findAll({
+			...
+			queryCount
+		});
+		const totalCount = userForCount.length;
+
+		const allUsers = await User.findAll({
 			...queryCount,
 			limit: Number(limit),
 			offset: limit * (page - 1),
-			attributes: { exclude: ["$user.password$"] },
 		});
-		const usersAll = roleUser.map(item => item.user)
+		allUsers.forEach(item => {
+			delete item.dataValues.roles;
+			delete item.dataValues.sales;
+			const listAmount = item.sales.map(s => s.amount);
+			const totalAmount = listAmount.reduce((accumulator, currentValue) => accumulator + currentValue, 0);
+			item.setDataValue('all_season_sales', totalAmount);
+
+			const listSaleInCurrentSeason = item.sales.filter(s => s.season_id === (currentSeason.id || undefined))
+			const listPointsInCurrentSeason = listSaleInCurrentSeason.map(s => s.point);
+			const totalPoint = listPointsInCurrentSeason.reduce((accumulator, currentValue) => accumulator + currentValue, 0);
+			item.setDataValue('current_season_point', totalPoint);
+
+		})
 
 		return res.json({
-			data: usersAll,
+			data: allUsers,
 			total: totalCount,
-			page,
+			page: Number(page),
 			totalPages: Math.ceil(totalCount / limit),
 		});
 	} catch (err) {
