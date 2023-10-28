@@ -23,7 +23,7 @@ module.exports.createManySale = async (req, res, next) => {
     const minRank = listRank[listRank.length - 1];
     for (let i = 0; i < users.length; i++) {
       const id = users[i];
-      await handleAddRecordUserSeasonRank(season_id, id,minRank);
+      await handleAddRecordUserSeasonRank(season_id, id, minRank);
       const point = await getPoint(season_id, id, amount, next);
       const newSale = {
         season_id,
@@ -206,7 +206,6 @@ const getPoint = async (season_id, user_id, amount, next) => {
           model: Rank,
           as: "rank",
         },
-
       ],
     });
     if (!currentRank) {
@@ -221,12 +220,16 @@ const getPoint = async (season_id, user_id, amount, next) => {
     // Tính điểm
     //cộng X2 doanh số vượt
     if (amount > target_day) {
-      return Math.round((amount + 2 * (amount - target_day)) / 1000000);
+      return (
+        Math.round(amount / 1000000) +
+        Math.round((2 * (amount - target_day)) / 1000000)
+      );
     }
     // Thấp hơn bị trừ
     if (amount < target_day) {
-      const moneyFinal = amount - (target_day - amount);
-      return Math.round(moneyFinal / 1000000);
+      const minusPoint = Math.round((target_day - amount) / 1000000);
+
+      return Math.round(amount / 1000000) - minusPoint;
     }
 
     // Bằng
@@ -307,7 +310,7 @@ const updateRankUser = async (season_id, user_id, newSale, listRank) => {
   //cập nhật lại rank
   if (rank != maxOrder) {
     const newIdRank = listRank.find((i) => i.order == rank);
-    if(newIdRank){
+    if (newIdRank) {
       User_Season_Rank.update(
         {
           rank_id: newIdRank.id,
@@ -320,7 +323,6 @@ const updateRankUser = async (season_id, user_id, newSale, listRank) => {
         }
       );
     }
-    
   }
 };
 // checkCompleted target
