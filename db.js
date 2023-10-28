@@ -51,6 +51,7 @@ Sale.belongsTo(Season, {
 });
 
 // user - sale : 1 - N
+User.hasMany(Sale, { foreignKey: 'user_id', as: 'sales' });
 Sale.belongsTo(User, {
   foreignKey: {
     name: "user_id",
@@ -61,6 +62,7 @@ Sale.belongsTo(User, {
   as: "user",
 });
 
+User.hasMany(Role, { foreignKey: 'user_id', as: 'roles' });
 Role.belongsTo(User, {
   foreignKey: {
     name: "user_id",
