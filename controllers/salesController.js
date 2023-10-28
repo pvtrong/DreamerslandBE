@@ -102,7 +102,7 @@ module.exports.deleteSale = async (req, res, next) => {
 // Search Sale
 module.exports.searchSales = async (req, res, next) => {
   try {
-    let { session_id, user_id, date_time, page, limit } = req.query;
+    let { session_id, user_id, date_time, page, limit,keyword } = req.query;
     if (isNaN(page) || !page || !Number.isInteger(Number(page))) {
       page = 1;
     }
@@ -132,21 +132,42 @@ module.exports.searchSales = async (req, res, next) => {
         [Op.lte]: new Date(searchDate.getTime() + 86400000), // Nhỏ hơn hoặc bằng ngày kết thúc (cộng 86400000 milliseconds cho một ngày)
       };
     }
-
-    const totalSales = await Sale.count({ where: whereClause });
+    
+    // Join
+    const include = [
+      { model: Season, as: "season" }, // Bổ sung thông tin từ mối quan hệ "season"
+      {
+        model: User,
+        as: "user",
+        attributes: { exclude: ["token", "password"] },
+        where: keyword ? {
+          [Op.or]: [
+            {
+              phone_number: {
+                [Op.like]: `%${keyword}%`,
+              },
+            },
+            {
+              first_name: {
+                [Op.like]: `%${keyword}%`,
+              },
+            },
+            {
+              last_name: {
+                [Op.like]: `%${keyword}%`,
+              },
+            },
+          ],
+        }:{},
+      }, // Bổ sung thông tin từ mối quan hệ "user"
+    ]
+    const totalSales = await Sale.count({ where: whereClause,include });
     const sales = await Sale.findAll({
       where: whereClause,
       limit: Number(limit),
       offset: offset,
       attributes: { exclude: ["user_id", "season_id"] },
-      include: [
-        { model: Season, as: "season" }, // Bổ sung thông tin từ mối quan hệ "season"
-        {
-          model: User,
-          as: "user",
-          attributes: { exclude: ["token", "password"] },
-        }, // Bổ sung thông tin từ mối quan hệ "user"
-      ],
+      include
     });
 
     const totalPages = Math.ceil(totalSales / limit);
