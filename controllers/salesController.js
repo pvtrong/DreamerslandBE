@@ -23,7 +23,7 @@ module.exports.createManySale = async (req, res, next) => {
     const minRank = listRank[listRank.length - 1];
     for (let i = 0; i < users.length; i++) {
       const id = users[i];
-      await handleAddRecordUserSeasonRank(season_id, id,minRank);
+      await handleAddRecordUserSeasonRank(season_id, id, minRank, amount);
       const point = await getPoint(season_id, id, amount, next);
       const newSale = {
         season_id,
@@ -77,22 +77,36 @@ module.exports.updateManySale = async (req, res, next) => {
 module.exports.deleteSale = async (req, res, next) => {
   const id = req.params.id;
   try {
-    const deleted = await Sale.destroy({
+    const deleteItem = await Sale.findByPk(id);
+    if (!deleteItem) {
+      return next({ statusCode: 404, message: "Không tồn tại" });
+    }
+
+    await Sale.destroy({
       where: {
         id: {
           [Op.eq]: id,
         },
       },
     });
-
-    if (!deleted) {
-      return next({ statusCode: 404, message: "Không tồn tại" });
+    const { season_id, user_id } = deleteItem;
+    const UserRank = await Sale.findOne({
+      where: {
+        season_id,
+        user_id,
+      },
+    });
+    console.log(UserRank);
+    if (!UserRank) {
+      await User_Season_Rank.destroy({
+        where: {
+          season_id,
+          user_id,
+        },
+      });
     }
     res.json({
       status: "success",
-      result: {
-        deletedSale: deleted,
-      },
     });
   } catch (error) {
     next(error);
@@ -102,7 +116,7 @@ module.exports.deleteSale = async (req, res, next) => {
 // Search Sale
 module.exports.searchSales = async (req, res, next) => {
   try {
-    let { session_id, user_id, date_time, page, limit } = req.query;
+    let { session_id, user_id, date_time, page, limit, keyword } = req.query;
     if (isNaN(page) || !page || !Number.isInteger(Number(page))) {
       page = 1;
     }
@@ -133,20 +147,43 @@ module.exports.searchSales = async (req, res, next) => {
       };
     }
 
-    const totalSales = await Sale.count({ where: whereClause });
+    // Join
+    const include = [
+      { model: Season, as: "season" }, // Bổ sung thông tin từ mối quan hệ "season"
+      {
+        model: User,
+        as: "user",
+        attributes: { exclude: ["token", "password"] },
+        where: keyword
+          ? {
+              [Op.or]: [
+                {
+                  phone_number: {
+                    [Op.like]: `%${keyword}%`,
+                  },
+                },
+                {
+                  first_name: {
+                    [Op.like]: `%${keyword}%`,
+                  },
+                },
+                {
+                  last_name: {
+                    [Op.like]: `%${keyword}%`,
+                  },
+                },
+              ],
+            }
+          : {},
+      }, // Bổ sung thông tin từ mối quan hệ "user"
+    ];
+    const totalSales = await Sale.count({ where: whereClause, include });
     const sales = await Sale.findAll({
       where: whereClause,
       limit: Number(limit),
       offset: offset,
       attributes: { exclude: ["user_id", "season_id"] },
-      include: [
-        { model: Season, as: "season" }, // Bổ sung thông tin từ mối quan hệ "season"
-        {
-          model: User,
-          as: "user",
-          attributes: { exclude: ["token", "password"] },
-        }, // Bổ sung thông tin từ mối quan hệ "user"
-      ],
+      include,
     });
 
     const totalPages = Math.ceil(totalSales / limit);
@@ -206,7 +243,6 @@ const getPoint = async (season_id, user_id, amount, next) => {
           model: Rank,
           as: "rank",
         },
-
       ],
     });
     if (!currentRank) {
@@ -220,22 +256,31 @@ const getPoint = async (season_id, user_id, amount, next) => {
 
     // Tính điểm
     //cộng X2 doanh số vượt
-    if (amount > target_day) {
-      return Math.round((amount + 2 * (amount - target_day)) / 1000000);
-    }
-    // Thấp hơn bị trừ
-    if (amount < target_day) {
-      const moneyFinal = amount - (target_day - amount);
-      return Math.round(moneyFinal / 1000000);
-    }
-
-    // Bằng
-    return Math.round(amount / 1000000);
+    const finalPoint = caculatorPoint(amount, target_day);
+    return finalPoint;
   } catch (error) {
     next(error);
   }
 };
 
+// caculcator point
+const caculatorPoint = (amount, target_day) => {
+  if (amount > target_day) {
+    return (
+      Math.round(amount / 1000000) +
+      Math.round((2 * (amount - target_day)) / 1000000)
+    );
+  }
+  // Thấp hơn bị trừ
+  if (amount < target_day) {
+    const minusPoint = Math.round((target_day - amount) / 1000000);
+
+    return Math.round(amount / 1000000) - minusPoint;
+  }
+
+  // Bằng
+  return Math.round(amount / 1000000);
+};
 // Update rank user
 
 const updateRankUser = async (season_id, user_id, newSale, listRank) => {
@@ -267,6 +312,7 @@ const updateRankUser = async (season_id, user_id, newSale, listRank) => {
       }
 
       if (!listSale[i + 2]) {
+        // point += listSale[i + 1].point;
         break;
       } else {
         if (!checkCompletedTarget(listSale[i + 2].amount, listRank, rank)) {
@@ -276,6 +322,7 @@ const updateRankUser = async (season_id, user_id, newSale, listRank) => {
         }
       }
       if (!listSale[i + 3]) {
+        // point += listSale[i + 2].point;
         break;
       } else {
         if (!checkCompletedTarget(listSale[i + 3].amount, listRank, rank)) {
@@ -286,6 +333,7 @@ const updateRankUser = async (season_id, user_id, newSale, listRank) => {
           // cập nhật lại rank
           rank += 1;
           point = 0;
+          i += 3;
           continue;
         }
       }
@@ -301,26 +349,24 @@ const updateRankUser = async (season_id, user_id, newSale, listRank) => {
   }
 
   // kêt thúc vòng for sẽ có rank hiện tại bằng giá trị biến rank, đối chiếu với order
-
   const maxOrder = listRank[0].order;
   const minRank = listRank[listRank.length - 1];
-  //cập nhật lại rank
-  if (rank != maxOrder) {
-    const newIdRank = listRank.find((i) => i.order == rank);
-    if(newIdRank){
-      User_Season_Rank.update(
-        {
-          rank_id: newIdRank.id,
+
+  //cập nhật lại rank va diem bonus
+  const newIdRank = listRank.find((i) => i.order == rank);
+  if (newIdRank) {
+    User_Season_Rank.update(
+      {
+        rank_id: newIdRank.id,
+        point: point < 0 ? 0 : point,
+      },
+      {
+        where: {
+          season_id,
+          user_id,
         },
-        {
-          where: {
-            season_id,
-            user_id,
-          },
-        }
-      );
-    }
-    
+      }
+    );
   }
 };
 // checkCompleted target
@@ -333,7 +379,12 @@ const checkCompletedTarget = (amount, listRank, order) => {
 };
 
 // handle add record in user_season_rank
-const handleAddRecordUserSeasonRank = async (season_id, user_id, minRank) => {
+const handleAddRecordUserSeasonRank = async (
+  season_id,
+  user_id,
+  minRank,
+  amount
+) => {
   const existRecord = await User_Season_Rank.findOne({
     where: {
       season_id,
@@ -342,7 +393,7 @@ const handleAddRecordUserSeasonRank = async (season_id, user_id, minRank) => {
   });
   if (!existRecord) {
     await User_Season_Rank.create({
-      point: 0,
+      point: caculatorPoint(amount, minRank.target_day),
       season_id,
       user_id,
       rank_id: minRank.id,
