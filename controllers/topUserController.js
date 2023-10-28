@@ -1,6 +1,6 @@
 require("dotenv").config();
 // Load model
-const { Sale } = require("../db");
+const { Sale, User_Season_Rank, Rank } = require("../db");
 const { Season, User } = require("../db");
 const { Op, fn, col } = require("sequelize");
 
@@ -69,7 +69,22 @@ module.exports.getTopuser = async (req, res, next) => {
         model: User,
         as: "user",
         attributes: { exclude: ["token", "password", "is_verified"] },
-      }, // Bổ sung thông tin từ mối quan hệ "user"
+        include: [
+          {
+            model: User_Season_Rank,
+            as: "userSeasonRanks",
+            include: [
+              {
+                model: Rank,
+                as: "rank",
+              },
+            ],
+            where: {
+              season_id,
+            },
+          },
+        ],
+      },
     ];
     if (season_id) {
       include.push({ model: Season, as: "season" });
@@ -77,11 +92,31 @@ module.exports.getTopuser = async (req, res, next) => {
     let listSale = await Sale.findAll({
       where: whereClause,
       attributes: { exclude: ["user_id", "season_id"] },
-      include
+      include,
     });
+
+    // format data
 
     listSale = listSale
       .map((sale) => sale.toJSON())
+      .map((item) => {
+        const user = item.user;
+        const userSeasonRanks = user.userSeasonRanks;
+        const rank =
+          userSeasonRanks.length > 0 ? userSeasonRanks[0].rank : null;
+        if (rank) {
+          rank.rank_name = userSeasonRanks[0].rank.rank_name;
+          rank.img_url = userSeasonRanks[0].rank.img_url;
+          rank.bonus =
+            userSeasonRanks[0].point > 100 ? 100 : userSeasonRanks[0].point;
+        }
+
+        // Loại bỏ key "userSeasonRanks" và thêm key "rank" với giá trị là rank
+        delete user.userSeasonRanks;
+        user.rank = rank;
+
+        return item;
+      })
       .sort((a, b) => new Date(a.date_time) - new Date(b.date_time))
       .map((salesItem) => ({
         ...salesItem,
