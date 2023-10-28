@@ -108,7 +108,7 @@ module.exports.getTopuser = async (req, res, next) => {
           rank.rank_name = userSeasonRanks[0].rank.rank_name;
           rank.img_url = userSeasonRanks[0].rank.img_url;
           rank.bonus =
-            userSeasonRanks[0].point > 100 ? 100 : userSeasonRanks[0].point;
+            userSeasonRanks[0].point > 100 ? 100 :  userSeasonRanks[0].point;
         }
 
         // Loại bỏ key "userSeasonRanks" và thêm key "rank" với giá trị là rank
