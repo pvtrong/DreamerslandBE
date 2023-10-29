@@ -5,6 +5,7 @@ const { Sale } = require('../db');
 const { Role } = require('../db');
 const { Season } = require('../db');
 const { User_Season_Rank } = require('../db');
+const { Rank } = require('../db');
 const { Op } = require('sequelize');
 
 const utils = require('../utils');
@@ -164,7 +165,9 @@ module.exports.loginUser = async (req, res, next) => {
 						first_name: user.first_name,
 						last_name: user.last_name,
 						bio: user.bio,
-						phone_number: user.phone_number
+						phone_number: user.phone_number,
+						created_at: user.createdAt,
+						updated_at: user.updatedAt
 					};
 					return res.json({
 						user: userData,
@@ -324,11 +327,74 @@ module.exports.getDetailUser = async (req, res, next) => {
 	const user_id = req.params.id || ''
 	try {
 
-		const user = await User.findOne({
+		const currentUser = await User.findOne({
+			attributes: {
+				exclude: ['password', 'is_verified', 'token'],
+			},
+			include: [
+				{
+					model: Role, as: "roles", where: {
+						role_id: ROLE.NORMAL_USER,
+					},
+					required: true,
+					attributes: { exclude: ['user_id', 'createdAt', 'updatedAt'] }
+				},
+				{
+					model: Sale, as: "sales",
+					attributes: { exclude: ['user_id', 'createdAt', 'updatedAt'] },
+				}
+			],
 			where: {
 				id: user_id
 			},
 		});
+		const currentSeason = await Season.findOne({
+			include: [
+				{
+					model: User_Season_Rank, as: "user_season_rank",
+					include: [
+						{
+							model: Rank, as: "rank",
+						}
+					],
+					where: {
+						user_id: user_id,
+					},
+					attributes: { exclude: ['createdAt', 'updatedAt'] }
+				},
+			],
+			required: true,
+			where: {
+				start_date: { [Op.lte]: now(), },
+				end_date: { [Op.gte]: now(), },
+			},
+			attributes: { exclude: ['createdAt', 'updatedAt'] }
+		})
+		const lowerRanking = await Rank.findOne({
+			where: {
+				order: 1
+			},
+		})
+		let resRank = undefined;
+		if (currentSeason && Array.isArray(currentSeason.dataValues.user_season_rank) && currentSeason.dataValues.user_season_rank.length > 0) {
+			resRank = currentSeason.dataValues.user_season_rank[0].rank;
+			delete currentSeason.dataValues.user_season_rank;
+		}
+		if (currentUser) {
+			delete currentUser.dataValues.roles;
+			delete currentUser.dataValues.sales;
+			const listAmount = currentUser.sales.map(s => s.amount);
+			const totalAmount = listAmount.reduce((accumulator, currentValue) => accumulator + currentValue, 0);
+			currentUser.setDataValue('all_season_sales', totalAmount);
+
+			const listSaleInCurrentSeason = currentUser.sales.filter(s => s.season_id === (currentSeason.id || undefined))
+			const listPointsInCurrentSeason = listSaleInCurrentSeason.map(s => s.point);
+			const totalPoint = listPointsInCurrentSeason.reduce((accumulator, currentValue) => accumulator + currentValue, 0);
+			currentUser.setDataValue('current_season_point', totalPoint);
+			currentUser.setDataValue('season', currentSeason);
+			currentUser.setDataValue('rank', resRank || lowerRanking);
+		}
+		return res.json({ currentUser });
 
 		return res.json(user);
 	} catch (err) {
@@ -344,13 +410,76 @@ module.exports.getLoggedInUser = (req, res, next) => {
 		jwt.verify(
 			token.replace(/^Bearer\s/, ''),
 			process.env.AUTH_SECRET,
-			(err, decoded) => {
+			async (err, decoded) => {
 				if (err) {
 					let err = new Error('Bạn đang không đăng nhập');
 					err.field = 'login';
 					return next(err);
 				} else {
-					return res.json({ status: 'success', user: decoded });
+
+					const currentUser = await User.findOne({
+						attributes: {
+							exclude: ['password', 'is_verified', 'token'],
+						},
+						include: [
+							{
+								model: Role, as: "roles", where: {
+									role_id: ROLE.NORMAL_USER,
+								},
+								required: true,
+								attributes: { exclude: ['user_id', 'createdAt', 'updatedAt'] }
+							},
+							{
+								model: Sale, as: "sales",
+								attributes: { exclude: ['user_id', 'createdAt', 'updatedAt'] },
+							}
+						],
+						where: {
+							id: decoded.id
+						},
+					});
+					const currentSeason = await Season.findOne({
+						include: [
+							{
+								model: User_Season_Rank, as: "user_season_rank",
+								include: [
+									{
+										model: Rank, as: "rank",
+									}
+								],
+								where: {
+									user_id: decoded.id,
+								},
+								attributes: { exclude: ['createdAt', 'updatedAt'] }
+							},
+						],
+						where: {
+							start_date: { [Op.lte]: now(), },
+							end_date: { [Op.gte]: now(), },
+						},
+						attributes: { exclude: ['createdAt', 'updatedAt'] }
+					})
+					let resRank = undefined;
+					if (currentSeason && Array.isArray(currentSeason.dataValues.user_season_rank) && currentSeason.dataValues.user_season_rank.length > 0) {
+						resRank = currentSeason.dataValues.user_season_rank[0].rank;
+						delete currentSeason.dataValues.user_season_rank;
+					}
+					delete currentSeason.dataValues.user_season_rank;
+					if (currentUser) {
+						delete currentUser.dataValues.roles;
+						delete currentUser.dataValues.sales;
+						const listAmount = currentUser.sales.map(s => s.amount);
+						const totalAmount = listAmount.reduce((accumulator, currentValue) => accumulator + currentValue, 0);
+						currentUser.setDataValue('all_season_sales', totalAmount);
+
+						const listSaleInCurrentSeason = currentUser.sales.filter(s => s.season_id === (currentSeason.id || undefined))
+						const listPointsInCurrentSeason = listSaleInCurrentSeason.map(s => s.point);
+						const totalPoint = listPointsInCurrentSeason.reduce((accumulator, currentValue) => accumulator + currentValue, 0);
+						currentUser.setDataValue('current_season_point', totalPoint);
+						currentUser.setDataValue('season', currentSeason);
+						currentUser.setDataValue('rank', resRank || lowerRanking);
+					}
+					return res.json({ currentUser });
 				}
 			}
 		);
