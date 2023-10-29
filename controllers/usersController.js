@@ -150,6 +150,11 @@ module.exports.loginUser = async (req, res, next) => {
 		});
 
 		if (user) {
+			if (user.deleted_at) {
+				let err = new Error('User has been deleted');
+				err.field = 'login';
+				return next(err);
+			}
 			const roleUser = await Role.findOne({
 				where: {
 					user_id: user.id
@@ -280,6 +285,8 @@ module.exports.getListUsers = async (req, res, next) => {
 					{ email: { [Op.like]: `%${search}%`, } },
 					{ phone_number: { [Op.like]: `%${search}%`, }, }
 				],
+				deleted_at: { [Op.eq]: null },
+
 			},
 		}
 		const currentSeason = await Season.findOne({
@@ -562,7 +569,7 @@ module.exports.updateProfileUser = async (req, res, next) => {
 };
 
 // Change Password
-module.exports.changePassword = (req, res, next) => {
+module.exports.changePassword = async (req, res, next) => {
 	try {
 		var id = req.user.id;
 
@@ -571,10 +578,7 @@ module.exports.changePassword = (req, res, next) => {
 		var hash = bcrypt.hashSync(req.body.new_password, salt);
 		const new_password = hash;
 
-		const result = User.update(
-			{
-				password: new_password,
-			},
+		const user = await User.findOne(
 			{
 				where: {
 					id: {
@@ -583,11 +587,27 @@ module.exports.changePassword = (req, res, next) => {
 				},
 			}
 		);
+		if (user) {
+			const isMatched = await bcrypt.compare(req.body.old_password, user.password);
 
-		return res.json({
-			status: 'success',
-			result: req.user,
-		});
+			if (isMatched) {
+				user.password = new_password;
+				const resUpdate = await user.save();
+				return res.json({
+					status: 'success',
+					result: resUpdate ? req.user : resUpdate,
+				});
+			} else {
+				let err = new Error('Invalid Old Password');
+				err.field = 'old_password';
+				return next(err);
+			}
+		}
+		else {
+			let err = new Error('Invalid User');
+			err.field = 'login';
+			return next(err);
+		}
 	} catch (err) {
 		return next(err);
 	}
@@ -706,16 +726,18 @@ module.exports.deleteUser = async (req, res, next) => {
 	try {
 		var phone_number = req.params.phone_number || '';
 
-		const result = await User.destroy({
+		const user = await User.findOne({
 			where: {
 				phone_number: phone_number
 			}
 		})
+		user.deleted_at = now();
+		user.save();
 
 
 		return res.json({
 			status: 'success',
-			result: result,
+			result: user,
 		});
 	} catch (err) {
 		return next(err);
