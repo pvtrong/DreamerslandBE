@@ -72,6 +72,7 @@ Role.belongsTo(User, {
   },
   as: "user",
 });
+Season.hasMany(User_Season_Rank, { foreignKey: 'season_id', as: 'user_season_rank' });
 User_Season_Rank.belongsTo(Season, {
   foreignKey: {
     name: "season_id",
