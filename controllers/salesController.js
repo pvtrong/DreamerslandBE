@@ -49,16 +49,31 @@ module.exports.updateManySale = async (req, res, next) => {
   const listId = req.body.ids;
   delete req.body.ids;
   try {
+    const listRank = await Rank.findAll({
+      order: [["order", "DESC"]],
+      raw: true,
+    });
     for (let i = 0; i < listId.length; i++) {
       let detail = await Sale.findByPk(listId[i]);
       if (!detail) return next("Error");
       detail = detail.toJSON();
-      const { season_id, user_id } = detail;
+      const { season_id, user_id, date_time } = detail;
       const point = await getPoint(season_id, user_id, req.body.amount, next);
+      const dataUpdate = {
+        ...req.body,
+        point,
+      };
+      const newSale = {
+        ...dataUpdate,
+        date_time,
+        user_id,
+      };
+      await updateRankUser(season_id, user_id, newSale, listRank, "update");
+
       await Sale.update(
         {
-          ...req.body,
-          point,
+          amount: newSale.amount,
+          point: newSale.point,
         },
         {
           where: {
@@ -96,7 +111,6 @@ module.exports.deleteSale = async (req, res, next) => {
         user_id,
       },
     });
-    console.log(UserRank);
     if (!UserRank) {
       await User_Season_Rank.destroy({
         where: {
@@ -283,9 +297,10 @@ const caculatorPoint = (amount, target_day) => {
 };
 // Update rank user
 
-const updateRankUser = async (season_id, user_id, newSale, listRank) => {
+const updateRankUser = async (season_id, user_id, newSale, listRank, mode) => {
   let rank = 1;
   let point = 0;
+  let listUpdatePoint = [];
   let listSale = await Sale.findAll({
     where: {
       season_id,
@@ -293,10 +308,33 @@ const updateRankUser = async (season_id, user_id, newSale, listRank) => {
     },
     raw: true,
   });
-  listSale.push(newSale);
-  listSale.sort((a, b) => a.date_time - b.date_time);
+  if (mode === "update") {
+    const index = listSale.findIndex((i) => {
+      return isEqualTime(i.date_time, newSale.date_time);
+    });
+    if (index >= 0) {
+      listSale[index] = { ...listSale[index], ...newSale };
+    }
+  } else {
+    listSale.push(newSale);
+  }
+  listSale.sort((a, b) => new Date(a.date_time) - new Date(b.date_time));
   for (let i = 0; i < listSale.length; i++) {
-    point += listSale[i].point;
+    const exactlyRank = listRank.find((i) => i.order == rank);
+
+    const exactlyPoint = caculatorPoint(
+      listSale[i].amount,
+      exactlyRank.target_day
+    );
+
+    // Nghĩa là rank đã thay đổi , ảnh hưởng đến point vì target_day thay đổi
+    if (exactlyPoint != listSale[i].point) {
+      listUpdatePoint.push({ ...listSale[i], point: exactlyPoint });
+      point += exactlyPoint;
+      // point += listSale[i].point;
+    } else {
+      point += listSale[i].point;
+    }
 
     if (point >= 100) {
       // check 3 ngày chuỗi
@@ -304,6 +342,12 @@ const updateRankUser = async (season_id, user_id, newSale, listRank) => {
       if (!listSale[i + 1]) {
         break;
       } else {
+        if (isEqualTime(listSale[i + 1].date_time, newSale.date_time)) {
+          newSale.point = caculatorPoint(
+            listSale[i + 1].amount,
+            exactlyRank.target_day
+          );
+        }
         if (!checkCompletedTarget(listSale[i + 1].amount, listRank, rank)) {
           point = 75;
           i += 1;
@@ -315,6 +359,12 @@ const updateRankUser = async (season_id, user_id, newSale, listRank) => {
         // point += listSale[i + 1].point;
         break;
       } else {
+        if (isEqualTime(listSale[i + 2].date_time, newSale.date_time)) {
+          newSale.point = caculatorPoint(
+            listSale[i + 2].amount,
+            exactlyRank.target_day
+          );
+        }
         if (!checkCompletedTarget(listSale[i + 2].amount, listRank, rank)) {
           point = 75;
           i += 2;
@@ -325,6 +375,12 @@ const updateRankUser = async (season_id, user_id, newSale, listRank) => {
         // point += listSale[i + 2].point;
         break;
       } else {
+        if (isEqualTime(listSale[i + 3].date_time, newSale.date_time)) {
+          newSale.point = caculatorPoint(
+            listSale[i + 3].amount,
+            exactlyRank.target_day
+          );
+        }
         if (!checkCompletedTarget(listSale[i + 3].amount, listRank, rank)) {
           point = 75;
           i += 3;
@@ -348,14 +404,10 @@ const updateRankUser = async (season_id, user_id, newSale, listRank) => {
     }
   }
 
-  // kêt thúc vòng for sẽ có rank hiện tại bằng giá trị biến rank, đối chiếu với order
-  const maxOrder = listRank[0].order;
-  const minRank = listRank[listRank.length - 1];
-
   //cập nhật lại rank va diem bonus
   const newIdRank = listRank.find((i) => i.order == rank);
   if (newIdRank) {
-    User_Season_Rank.update(
+    await User_Season_Rank.update(
       {
         rank_id: newIdRank.id,
         point: point < 0 ? 0 : point,
@@ -364,6 +416,37 @@ const updateRankUser = async (season_id, user_id, newSale, listRank) => {
         where: {
           season_id,
           user_id,
+        },
+      }
+    );
+  }
+
+  // Cập nhật lại các record Sale bị thay đổi điểm
+  // Tìm xem newSale có nằm trong list Update ko
+
+  const indexSale = listUpdatePoint.findIndex((i) =>
+    isEqualTime(i.date_time, newSale.date_time)
+  );
+
+  if (indexSale >= 0) {
+    newSale.point = listUpdatePoint[indexSale].point;
+    listUpdatePoint = [
+      ...listUpdatePoint.slice(0, indexSale),
+      ...listUpdatePoint.slice(indexSale + 1),
+    ];
+  }
+
+  // Update point
+  for (let i = 0; i < listUpdatePoint.length; i++) {
+    const idUpdate = listUpdatePoint[i].id;
+    const pointUpdate = listUpdatePoint[i].point;
+    await Sale.update(
+      {
+        point: pointUpdate,
+      },
+      {
+        where: {
+          id: idUpdate,
         },
       }
     );
@@ -399,4 +482,8 @@ const handleAddRecordUserSeasonRank = async (
       rank_id: minRank.id,
     });
   }
+};
+
+const isEqualTime = (time1, time2) => {
+  return new Date(time1).getTime() == new Date(time2).getTime();
 };
