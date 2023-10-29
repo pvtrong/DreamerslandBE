@@ -150,6 +150,11 @@ module.exports.loginUser = async (req, res, next) => {
 		});
 
 		if (user) {
+			if (user.deleted_at) {
+				let err = new Error('User has been deleted');
+				err.field = 'login';
+				return next(err);
+			}
 			const roleUser = await Role.findOne({
 				where: {
 					user_id: user.id
@@ -280,6 +285,8 @@ module.exports.getListUsers = async (req, res, next) => {
 					{ email: { [Op.like]: `%${search}%`, } },
 					{ phone_number: { [Op.like]: `%${search}%`, }, }
 				],
+				deleted_at: { [Op.eq]: null },
+
 			},
 		}
 		const currentSeason = await Season.findOne({
@@ -583,7 +590,6 @@ module.exports.changePassword = async (req, res, next) => {
 		if (user) {
 			const isMatched = await bcrypt.compare(req.body.old_password, user.password);
 
-			console.log("🚀 ~ file: usersController.js:583 ~ result:", isMatched)
 			if (isMatched) {
 				user.password = new_password;
 				const resUpdate = await user.save();
@@ -720,16 +726,18 @@ module.exports.deleteUser = async (req, res, next) => {
 	try {
 		var phone_number = req.params.phone_number || '';
 
-		const result = await User.destroy({
+		const user = await User.findOne({
 			where: {
 				phone_number: phone_number
 			}
 		})
+		user.deleted_at = now();
+		user.save();
 
 
 		return res.json({
 			status: 'success',
-			result: result,
+			result: user,
 		});
 	} catch (err) {
 		return next(err);
