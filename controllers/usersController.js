@@ -562,7 +562,7 @@ module.exports.updateProfileUser = async (req, res, next) => {
 };
 
 // Change Password
-module.exports.changePassword = (req, res, next) => {
+module.exports.changePassword = async (req, res, next) => {
 	try {
 		var id = req.user.id;
 
@@ -571,10 +571,7 @@ module.exports.changePassword = (req, res, next) => {
 		var hash = bcrypt.hashSync(req.body.new_password, salt);
 		const new_password = hash;
 
-		const result = User.update(
-			{
-				password: new_password,
-			},
+		const user = await User.findOne(
 			{
 				where: {
 					id: {
@@ -583,11 +580,28 @@ module.exports.changePassword = (req, res, next) => {
 				},
 			}
 		);
+		if (user) {
+			const isMatched = await bcrypt.compare(req.body.old_password, user.password);
 
-		return res.json({
-			status: 'success',
-			result: req.user,
-		});
+			console.log("🚀 ~ file: usersController.js:583 ~ result:", isMatched)
+			if (isMatched) {
+				user.password = new_password;
+				const resUpdate = await user.save();
+				return res.json({
+					status: 'success',
+					result: resUpdate ? req.user : resUpdate,
+				});
+			} else {
+				let err = new Error('Invalid Old Password');
+				err.field = 'old_password';
+				return next(err);
+			}
+		}
+		else {
+			let err = new Error('Invalid User');
+			err.field = 'login';
+			return next(err);
+		}
 	} catch (err) {
 		return next(err);
 	}

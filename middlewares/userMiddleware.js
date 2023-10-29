@@ -237,6 +237,10 @@ module.exports.isUserExistsUpdateForAdmin = async (req, res, next) => {
 
 // Schema - ChangePassword
 let schemaChangePassword = yup.object().shape({
+
+	old_password: yup
+		.string()
+		.required('Please enter Old Password'),
 	new_password: yup
 		.string()
 		.required('Please enter New Password')
@@ -259,6 +263,7 @@ module.exports.validationChangePassword = (req, res, next) => {
 	schemaChangePassword
 		.validate(
 			{
+				old_password: req.body.old_password,
 				new_password: req.body.new_password,
 				repeat_new_password: req.body.repeat_new_password,
 			},
