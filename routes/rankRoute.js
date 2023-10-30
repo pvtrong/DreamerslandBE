@@ -4,6 +4,8 @@ const rankController = require('../controllers/rankController');
 const router = Router();
 // Import Middlewares
 const { validationUpdate } = require("../middlewares/taskMiddleware");
+const { isAdmin } = require("../middlewares/userMiddleware");
+
 const configUpload = require("../services/upload");
 const { checkUniqueRankName, validationCreateRank, validationUpdateRank, checkValidId, checkPoint } = require("../middlewares/rankMiddleware");
 
@@ -11,6 +13,7 @@ const { checkUniqueRankName, validationCreateRank, validationUpdateRank, checkVa
 
 router.post(
   "/rank",
+  isAdmin,
   configUpload.uploadCloud.single("image"),
   // validationCreateRank,
   // checkUniqueRankName,
@@ -19,6 +22,7 @@ router.post(
 );
 router.put(
     "/rank",
+    isAdmin,
     configUpload.uploadCloud.single("image"),
     checkValidId,
     validationUpdateRank,
@@ -27,15 +31,18 @@ router.put(
   );
   router.delete(
     "/rank/:id",
+    isAdmin,
    rankController.deleteRank
   );
   
   router.get(
     "/rank/search",
+   isAdmin,
    rankController.searchRank
   );
   router.get(
     "/rank/:id",
+    isAdmin,
    rankController.getDetailRank
   );
 module.exports = router;

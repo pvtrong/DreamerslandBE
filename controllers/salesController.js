@@ -96,7 +96,7 @@ module.exports.deleteSale = async (req, res, next) => {
     if (!deleteItem) {
       return next({ statusCode: 404, message: "Không tồn tại" });
     }
-
+    // Da xoa
     await Sale.destroy({
       where: {
         id: {
@@ -105,6 +105,13 @@ module.exports.deleteSale = async (req, res, next) => {
       },
     });
     const { season_id, user_id } = deleteItem;
+    const listRank = await Rank.findAll({
+      order: [["order", "DESC"]],
+      raw: true,
+    });
+    await updateRankUser(season_id, user_id, null, listRank, "delete");
+
+    // Nếu đã xóa hết thì xóa luôn record trong bảng User_Season_Ranks
     const UserRank = await Sale.findOne({
       where: {
         season_id,
@@ -297,7 +304,13 @@ const caculatorPoint = (amount, target_day) => {
 };
 // Update rank user
 
-const updateRankUser = async (season_id, user_id, newSale, listRank, mode) => {
+const updateRankUser = async (
+  season_id,
+  user_id,
+  newSale,
+  listRank,
+  mode = "create"
+) => {
   let rank = 1;
   let point = 0;
   let listUpdatePoint = [];
@@ -315,13 +328,14 @@ const updateRankUser = async (season_id, user_id, newSale, listRank, mode) => {
     if (index >= 0) {
       listSale[index] = { ...listSale[index], ...newSale };
     }
-  } else {
+  } else if (mode === "create") {
     listSale.push(newSale);
   }
-  listSale.sort((a, b) => new Date(a.date_time) - new Date(b.date_time));
+  listSale.sort(
+    (a, b) => new Date(a.date_time).getTime() - new Date(b.date_time).getTime()
+  );
   for (let i = 0; i < listSale.length; i++) {
     const exactlyRank = listRank.find((i) => i.order == rank);
-
     const exactlyPoint = caculatorPoint(
       listSale[i].amount,
       exactlyRank.target_day
@@ -342,11 +356,12 @@ const updateRankUser = async (season_id, user_id, newSale, listRank, mode) => {
       if (!listSale[i + 1]) {
         break;
       } else {
-        if (isEqualTime(listSale[i + 1].date_time, newSale.date_time)) {
-          newSale.point = caculatorPoint(
-            listSale[i + 1].amount,
-            exactlyRank.target_day
-          );
+        const exactlyPoint = caculatorPoint(
+          listSale[i + 1].amount,
+          exactlyRank.target_day
+        );
+        if (exactlyPoint != listSale[i + 1].point) {
+          listUpdatePoint.push({ ...listSale[i + 1], point: exactlyPoint });
         }
         if (!checkCompletedTarget(listSale[i + 1].amount, listRank, rank)) {
           point = 75;
@@ -359,11 +374,12 @@ const updateRankUser = async (season_id, user_id, newSale, listRank, mode) => {
         // point += listSale[i + 1].point;
         break;
       } else {
-        if (isEqualTime(listSale[i + 2].date_time, newSale.date_time)) {
-          newSale.point = caculatorPoint(
-            listSale[i + 2].amount,
-            exactlyRank.target_day
-          );
+        const exactlyPoint = caculatorPoint(
+          listSale[i + 2].amount,
+          exactlyRank.target_day
+        );
+        if (exactlyPoint != listSale[i + 2].point) {
+          listUpdatePoint.push({ ...listSale[i + 2], point: exactlyPoint });
         }
         if (!checkCompletedTarget(listSale[i + 2].amount, listRank, rank)) {
           point = 75;
@@ -375,11 +391,12 @@ const updateRankUser = async (season_id, user_id, newSale, listRank, mode) => {
         // point += listSale[i + 2].point;
         break;
       } else {
-        if (isEqualTime(listSale[i + 3].date_time, newSale.date_time)) {
-          newSale.point = caculatorPoint(
-            listSale[i + 3].amount,
-            exactlyRank.target_day
-          );
+        const exactlyPoint = caculatorPoint(
+          listSale[i + 3].amount,
+          exactlyRank.target_day
+        );
+        if (exactlyPoint != listSale[i + 3].point) {
+          listUpdatePoint.push({ ...listSale[i + 3], point: exactlyPoint });
         }
         if (!checkCompletedTarget(listSale[i + 3].amount, listRank, rank)) {
           point = 75;
@@ -424,16 +441,18 @@ const updateRankUser = async (season_id, user_id, newSale, listRank, mode) => {
   // Cập nhật lại các record Sale bị thay đổi điểm
   // Tìm xem newSale có nằm trong list Update ko
 
-  const indexSale = listUpdatePoint.findIndex((i) =>
-    isEqualTime(i.date_time, newSale.date_time)
-  );
+  if (newSale) {
+    const indexSale = listUpdatePoint.findIndex((i) =>
+      isEqualTime(i.date_time, newSale.date_time)
+    );
 
-  if (indexSale >= 0) {
-    newSale.point = listUpdatePoint[indexSale].point;
-    listUpdatePoint = [
-      ...listUpdatePoint.slice(0, indexSale),
-      ...listUpdatePoint.slice(indexSale + 1),
-    ];
+    if (indexSale >= 0) {
+      newSale.point = listUpdatePoint[indexSale].point;
+      listUpdatePoint = [
+        ...listUpdatePoint.slice(0, indexSale),
+        ...listUpdatePoint.slice(indexSale + 1),
+      ];
+    }
   }
 
   // Update point
