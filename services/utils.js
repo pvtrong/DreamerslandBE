@@ -1,8 +1,8 @@
 const { DEFAULTQUERY } = require('../constants/common');
 
-module.exports.getPageSize = (page, size) => {
+module.exports.getPageSize = (page, limit) => {
     return {
         page: page || DEFAULTQUERY.page,
-        size: size || DEFAULTQUERY.size,
+        limit: limit || DEFAULTQUERY.limit,
     }
 }

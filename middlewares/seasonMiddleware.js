@@ -90,9 +90,9 @@ module.exports.checkSeason = async (req, res, next) => {
       
       const conflictSeason = allSeason.find((seasonItem) => {
         return (
-          (new Date(start_date)?.getDate >= seasonItem.start_date.getDate() &&
-            new Date(start_date)?.getDate() <= seasonItem.end_date.getDate()) ||
-          (new Date(end_date)?.getDate() >= seasonItem.start_date.getDate() && new Date(end_date).getDate() <= seasonItem.end_date.getDate())
+          (new Date(start_date).getDate >= seasonItem.start_date.getDate() &&
+            new Date(start_date).getDate() <= seasonItem.end_date.getDate()) ||
+          (new Date(end_date).getDate() >= seasonItem.start_date.getDate() && new Date(end_date).getDate() <= seasonItem.end_date.getDate())
         );
       });
 
