@@ -48,6 +48,10 @@ module.exports.UserModel = (sequelize) => {
 				allowNull: false,
 				unique: true
 			},
+			deleted_at: {
+				type: DataTypes.DATE,
+				allowNull: true,
+			},
 		},
 		{
 			// Other model options go here

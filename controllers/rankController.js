@@ -101,6 +101,7 @@ module.exports.searchRank = async (req, res, next) => {
       },
       limit: Number(limit),
       offset: offset,
+      order:[["order"]]
     });
 
     const totalPages = Math.ceil(totalRanks / limit);

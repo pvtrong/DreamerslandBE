@@ -51,6 +51,7 @@ Sale.belongsTo(Season, {
 });
 
 // user - sale : 1 - N
+User.hasMany(Sale, { foreignKey: 'user_id', as: 'sales' });
 Sale.belongsTo(User, {
   foreignKey: {
     name: "user_id",
@@ -61,6 +62,7 @@ Sale.belongsTo(User, {
   as: "user",
 });
 
+User.hasMany(Role, { foreignKey: 'user_id', as: 'roles' });
 Role.belongsTo(User, {
   foreignKey: {
     name: "user_id",
@@ -70,6 +72,7 @@ Role.belongsTo(User, {
   },
   as: "user",
 });
+Season.hasMany(User_Season_Rank, { foreignKey: 'season_id', as: 'user_season_rank' });
 User_Season_Rank.belongsTo(Season, {
   foreignKey: {
     name: "season_id",
@@ -96,6 +99,10 @@ User_Season_Rank.belongsTo(User, {
     onUpdate: "CASCADE",
   },
   as: "user",
+});
+User.hasMany(User_Season_Rank, {
+  foreignKey: 'user_id',
+  as: 'userSeasonRanks',
 });
 
 
