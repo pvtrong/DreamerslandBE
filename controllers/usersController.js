@@ -466,12 +466,16 @@ module.exports.getLoggedInUser = (req, res, next) => {
 						},
 						attributes: { exclude: ['createdAt', 'updatedAt'] }
 					})
+					const lowerRanking = await Rank.findOne({
+						where: {
+							order: 1
+						},
+					})
 					let resRank = undefined;
 					if (currentSeason && Array.isArray(currentSeason.dataValues.user_season_rank) && currentSeason.dataValues.user_season_rank.length > 0) {
 						resRank = currentSeason.dataValues.user_season_rank[0].rank;
 						delete currentSeason.dataValues.user_season_rank;
 					}
-					delete currentSeason.dataValues.user_season_rank;
 					if (currentUser) {
 						delete currentUser.dataValues.roles;
 						delete currentUser.dataValues.sales;
