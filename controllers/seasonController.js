@@ -27,8 +27,8 @@ module.exports.getAllSeason = async (req, res, next) => {
 
     listSeason.forEach((item) => {
       if (
-        new Date(item.start_date).getDate() <= new Date().getDate() &&
-        new Date(item.end_date).getDate() >= new Date().getDate()
+        new Date(item.start_date) <= new Date() &&
+        new Date(item.end_date) >= new Date()
         ) {
           item.dataValues.is_current_season = true;
         } else {
