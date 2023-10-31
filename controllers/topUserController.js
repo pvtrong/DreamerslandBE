@@ -69,6 +69,9 @@ module.exports.getTopuser = async (req, res, next) => {
         model: User,
         as: "user",
         attributes: { exclude: ["token", "password", "is_verified"] },
+        where:{
+          deleted_at: null
+        },
         include: [
           {
             model: User_Season_Rank,

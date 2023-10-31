@@ -313,7 +313,7 @@ module.exports.getListUsers = async (req, res, next) => {
 			const totalAmount = listAmount.reduce((accumulator, currentValue) => accumulator + currentValue, 0);
 			item.setDataValue('all_season_sales', totalAmount);
 
-			const listSaleInCurrentSeason = item.sales.filter(s => s.season_id === (currentSeason.id || undefined))
+			const listSaleInCurrentSeason = item.sales.filter(s => s.season_id === (currentSeason ?currentSeason.id : undefined))
 			const listPointsInCurrentSeason = listSaleInCurrentSeason.map(s => s.point);
 			const totalPoint = listPointsInCurrentSeason.reduce((accumulator, currentValue) => accumulator + currentValue, 0);
 			item.setDataValue('current_season_point', totalPoint);
