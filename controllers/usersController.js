@@ -313,7 +313,7 @@ module.exports.getListUsers = async (req, res, next) => {
 			const totalAmount = listAmount.reduce((accumulator, currentValue) => accumulator + currentValue, 0);
 			item.setDataValue('all_season_sales', totalAmount);
 
-			const listSaleInCurrentSeason = item.sales.filter(s => s.season_id === (currentSeason ?currentSeason.id : undefined))
+			const listSaleInCurrentSeason = item.sales.filter(s => s.season_id === (currentSeason ? currentSeason.id : undefined))
 			const listPointsInCurrentSeason = listSaleInCurrentSeason.map(s => s.point);
 			const totalPoint = listPointsInCurrentSeason.reduce((accumulator, currentValue) => accumulator + currentValue, 0);
 			item.setDataValue('current_season_point', totalPoint);
@@ -393,10 +393,12 @@ module.exports.getDetailUser = async (req, res, next) => {
 			const listAmount = currentUser.sales.map(s => s.amount);
 			const totalAmount = listAmount.reduce((accumulator, currentValue) => accumulator + currentValue, 0);
 			currentUser.setDataValue('all_season_sales', totalAmount);
-
-			const listSaleInCurrentSeason = currentUser.sales.filter(s => s.season_id === (currentSeason.id || undefined))
-			const listPointsInCurrentSeason = listSaleInCurrentSeason.map(s => s.point);
-			const totalPoint = listPointsInCurrentSeason.reduce((accumulator, currentValue) => accumulator + currentValue, 0);
+			let totalPoint = null;
+			if (currentSeason) {
+				const listSaleInCurrentSeason = currentUser.sales.filter(s => s.season_id === (currentSeason.id || undefined))
+				const listPointsInCurrentSeason = listSaleInCurrentSeason.map(s => s.point);
+				totalPoint = listPointsInCurrentSeason.reduce((accumulator, currentValue) => accumulator + currentValue, 0);
+			}
 			currentUser.setDataValue('current_season_point', totalPoint);
 			currentUser.setDataValue('season', currentSeason);
 			currentUser.setDataValue('rank', resRank || lowerRanking);
@@ -482,10 +484,12 @@ module.exports.getLoggedInUser = (req, res, next) => {
 						const listAmount = currentUser.sales.map(s => s.amount);
 						const totalAmount = listAmount.reduce((accumulator, currentValue) => accumulator + currentValue, 0);
 						currentUser.setDataValue('all_season_sales', totalAmount);
-
-						const listSaleInCurrentSeason = currentUser.sales.filter(s => s.season_id === (currentSeason.id || undefined))
-						const listPointsInCurrentSeason = listSaleInCurrentSeason.map(s => s.point);
-						const totalPoint = listPointsInCurrentSeason.reduce((accumulator, currentValue) => accumulator + currentValue, 0);
+						let totalPoint = null;
+						if (currentSeason) {
+							const listSaleInCurrentSeason = currentUser.sales.filter(s => s.season_id === (currentSeason.id || undefined))
+							const listPointsInCurrentSeason = listSaleInCurrentSeason.map(s => s.point);
+							totalPoint = listPointsInCurrentSeason.reduce((accumulator, currentValue) => accumulator + currentValue, 0);
+						}
 						currentUser.setDataValue('current_season_point', totalPoint);
 						currentUser.setDataValue('season', currentSeason);
 						currentUser.setDataValue('rank', resRank || lowerRanking);
