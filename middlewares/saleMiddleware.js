@@ -1,6 +1,6 @@
 let yup = require("yup");
 const { Sale } = require("../db");
-const { Season,User } = require("../db");
+const { Season, User } = require("../db");
 
 const { Op, fn, col, literal } = require("sequelize");
 
@@ -47,19 +47,22 @@ module.exports.validationUpdateSale = (req, res, next) => {
 };
 // check list id update
 module.exports.checkListIdUpdate = async (req, res, next) => {
-  if((new Set(req.body.ids).size !==req.body.ids.length )){
-    req.body.ids =  Array.from(new Set( req.body.ids));
-   }
+  if (new Set(req.body.ids).size !== req.body.ids.length) {
+    req.body.ids = Array.from(new Set(req.body.ids));
+  }
   const listId = req.body.ids || [];
   for (let i = 0; i < listId.length; i++) {
-    const saleItem =await Sale.findOne({
+    const saleItem = await Sale.findOne({
       where: {
         id: listId[i],
       },
-      raw:true
+      raw: true,
     });
-    if(!saleItem){
-        return next({statusCode:400,message:"Tồn tại doanh thu muốn cập nhật không có trong hệ thống"})
+    if (!saleItem) {
+      return next({
+        statusCode: 400,
+        message: "Tồn tại doanh thu muốn cập nhật không có trong hệ thống",
+      });
     }
   }
   next();
@@ -82,27 +85,62 @@ module.exports.checkSeason = async (req, res, next) => {
   }
 };
 
+// Check xem cái date time đó có đúng với ngày trong season gửi lên ko
+module.exports.checkDateTime = async (req, res, next) => {
+  try {
+    const { season_id, date_time } = req.body;
+    let fromDate = new Date(date_time);
+    fromDate.setHours(0, 0, 0, 0);
+    fromDate = fromDate.getTime();
+
+    let currentSeason = await Season.findOne({
+      where: {
+        id: season_id,
+      },
+    });
+    currentSeason = currentSeason.toJSON();
+    let startDate = new Date(currentSeason.start_date);
+    startDate.setHours(0, 0, 0, 0);
+    startDate = startDate.getTime();
+
+    let endDate = new Date(currentSeason.end_date);
+    endDate.setHours(0, 0, 0, 0);
+    endDate = endDate.getTime();
+    if (fromDate > endDate || fromDate < startDate) {
+      return next({
+        statusCode: 400,
+        message: "Ngày không phù hợp",
+      });
+    }
+    next();
+  } catch (err) {
+    return next(err);
+  }
+};
+
 // Chekc list user gui len co ton tai ko va co bi dublicate ko
 module.exports.notFoundUser = async (req, res, next) => {
-  
-  if((new Set(req.body.users).size !==req.body.users.length )){
-   req.body.users =  Array.from(new Set( req.body.users));
+  if (new Set(req.body.users).size !== req.body.users.length) {
+    req.body.users = Array.from(new Set(req.body.users));
   }
   const listId = req.body.users || [];
   for (let i = 0; i < listId.length; i++) {
-    const userItem =await User.findOne({
+    const userItem = await User.findOne({
       where: {
         id: listId[i],
       },
-      raw:true
+      raw: true,
     });
-    console.log(userItem)
-    if(!userItem){
-        return next({statusCode:400,message:"Tồn tại user muốn thêm doanh só không có trong hệ thống"})
+    console.log(userItem);
+    if (!userItem) {
+      return next({
+        statusCode: 400,
+        message: "Tồn tại user muốn thêm doanh só không có trong hệ thống",
+      });
     }
   }
   next();
-}
+};
 // Tồn tại user đã thêm từ trước
 module.exports.existUserForDate = async (req, res, next) => {
   try {
