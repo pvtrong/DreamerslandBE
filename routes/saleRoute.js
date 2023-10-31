@@ -10,6 +10,7 @@ const {
   validationUpdateSale,
   checkListIdUpdate,
   notFoundUser,
+  checkDateTime,
 } = require("../middlewares/saleMiddleware");
 const { validationUpdate } = require("../middlewares/taskMiddleware");
 const { authenticateToken, isAdmin } = require("../middlewares/userMiddleware");
@@ -21,6 +22,7 @@ router.post(
   [authenticateToken, isAdmin],
   validationCreateSale,
   checkSeason,
+  checkDateTime,
   notFoundUser,
   existUserForDate,
   saleController.createManySale

@@ -47,6 +47,12 @@ module.exports.createManySale = async (req, res, next) => {
 // Update Sale
 module.exports.updateManySale = async (req, res, next) => {
   const listId = req.body.ids;
+  if (listId.length > 1 && req.body.date_time) {
+    return next({
+      statusCode: 400,
+      message: "Không cho phép sửa date_time khi sửa nhiều",
+    });
+  }
   delete req.body.ids;
   try {
     const listRank = await Rank.findAll({
@@ -58,6 +64,12 @@ module.exports.updateManySale = async (req, res, next) => {
       if (!detail) return next("Error");
       detail = detail.toJSON();
       const { season_id, user_id, date_time } = detail;
+      if (
+        req.body.date_time &&
+        !(await checkDateTime(season_id, req.body.date_time, user_id))
+      ) {
+        return next({ statusCode: 400, message: "Ngày update không hợp lệ" });
+      }
       const point = await getPoint(season_id, user_id, req.body.amount, next);
       const dataUpdate = {
         ...req.body,
@@ -65,7 +77,7 @@ module.exports.updateManySale = async (req, res, next) => {
       };
       const newSale = {
         ...dataUpdate,
-        date_time,
+        date_time: req.body.date_time ? req.body.date_time : date_time,
         user_id,
       };
       await updateRankUser(season_id, user_id, newSale, listRank, "update");
@@ -74,6 +86,7 @@ module.exports.updateManySale = async (req, res, next) => {
         {
           amount: newSale.amount,
           point: newSale.point,
+          date_time: req.body.date_time ? req.body.date_time : date_time,
         },
         {
           where: {
@@ -508,4 +521,46 @@ const handleAddRecordUserSeasonRank = async (
 
 const isEqualTime = (time1, time2) => {
   return new Date(time1).getTime() == new Date(time2).getTime();
+};
+
+const checkDateTime = async (season_id, date_time, user_id) => {
+  let sale = await Sale.findAll({
+    where: {
+      season_id,
+      user_id,
+    },
+    raw:true,
+  });
+  
+  let fromDate = new Date(date_time);
+  fromDate.setHours(0, 0, 0, 0);
+  fromDate = fromDate.getTime();
+
+  let currentSeason = await Season.findOne({
+    where: {
+      id: season_id,
+    },
+  });
+  currentSeason = currentSeason.toJSON();
+  let startDate = new Date(currentSeason.start_date);
+  startDate.setHours(0, 0, 0, 0);
+  startDate = startDate.getTime();
+
+  let endDate = new Date(currentSeason.end_date);
+  endDate.setHours(0, 0, 0, 0);
+  endDate = endDate.getTime();
+
+  for(let i =0;i<sale.length;i++){
+    let checkTime = new Date(sale[i].date_time);
+    checkTime.setHours(0, 0, 0, 0);
+    checkTime = checkTime.getTime();
+    if (checkTime == fromDate) {
+      return false;
+    }
+  }
+  
+  if (fromDate > endDate || fromDate < startDate) {
+    return false;
+  }
+  return true;
 };
