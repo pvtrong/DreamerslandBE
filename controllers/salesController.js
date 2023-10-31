@@ -177,6 +177,7 @@ module.exports.searchSales = async (req, res, next) => {
         attributes: { exclude: ["token", "password"] },
         where: keyword
           ? {
+              deleted_at: null,
               [Op.or]: [
                 {
                   phone_number: {
@@ -195,7 +196,9 @@ module.exports.searchSales = async (req, res, next) => {
                 },
               ],
             }
-          : {},
+          : {
+              deleted_at: null,
+            },
       }, // Bổ sung thông tin từ mối quan hệ "user"
     ];
     const totalSales = await Sale.count({ where: whereClause, include });
