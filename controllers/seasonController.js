@@ -30,12 +30,12 @@ module.exports.getAllSeason = async (req, res, next) => {
       if (
         new Date(item.start_date) <= new Date() &&
         new Date(item.end_date) >= new Date()
-        ) {
-          item.dataValues.is_current_season = true;
-        } else {
-          item.dataValues.is_current_season = false;
-        }
-        console.log(item)
+      ) {
+        item.dataValues.is_current_season = true;
+      } else {
+        item.dataValues.is_current_season = false;
+      }
+      console.log(item);
     });
 
     const totalSeason = await Season.count({
@@ -76,14 +76,14 @@ module.exports.createSeason = async (req, res, next) => {
     const { season_name, start_date, end_date } = req.body;
     const newSeason = await Season.create({
       season_name,
-      start_date :getTimeExactly(start_date),
-      end_date:getTimeExactly(end_date),
+      start_date: getTimeExactly(start_date),
+      end_date: getTimeExactly(end_date),
     });
     res.status(201).json(newSeason);
   } catch (error) {
     next(error);
   }
-}
+};
 
 // edit season
 module.exports.editSeason = async (req, res, next) => {
@@ -92,8 +92,8 @@ module.exports.editSeason = async (req, res, next) => {
     const editSeason = await Season.update(
       {
         season_name,
-        start_date,
-        end_date,
+        start_date: getTimeExactly(start_date),
+        end_date: getTimeExactly(end_date),
       },
       {
         where: {
@@ -105,7 +105,7 @@ module.exports.editSeason = async (req, res, next) => {
   } catch (error) {
     next(error);
   }
-}
+};
 
 // delete season
 module.exports.deleteSeason = async (req, res, next) => {
@@ -120,4 +120,4 @@ module.exports.deleteSeason = async (req, res, next) => {
   } catch (error) {
     next(error);
   }
-}
+};
