@@ -10,10 +10,12 @@ var formidable = require("formidable");
 var fs = require("fs");
 const moment = require("moment");
 const { ppid } = require("process");
+const { getTimeExactly } = require("../services/utils");
 module.exports.createManySale;
 // create many
 module.exports.createManySale = async (req, res, next) => {
-  const { amount, users, season_id, date_time } = req.body;
+  let { amount, users, season_id, date_time } = req.body;
+ date_time = getTimeExactly(date_time)
   try {
     let listNewSale = [];
     const listRank = await Rank.findAll({
@@ -86,7 +88,7 @@ module.exports.updateManySale = async (req, res, next) => {
         {
           amount: newSale.amount,
           point: newSale.point,
-          date_time: req.body.date_time ? req.body.date_time : date_time,
+          date_time: req.body.date_time ? getTimeExactly(req.body.date_time) : date_time,
         },
         {
           where: {
