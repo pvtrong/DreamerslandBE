@@ -2,6 +2,7 @@ require("dotenv").config();
 // Load model
 const { Season, User } = require("../db");
 const { Op, fn, col } = require("sequelize");
+const { getTimeExactly } = require("../services/utils");
 module.exports.createManySale;
 // get all season
 module.exports.getAllSeason = async (req, res, next) => {
@@ -75,8 +76,8 @@ module.exports.createSeason = async (req, res, next) => {
     const { season_name, start_date, end_date } = req.body;
     const newSeason = await Season.create({
       season_name,
-      start_date,
-      end_date,
+      start_date :getTimeExactly(start_date),
+      end_date:getTimeExactly(end_date),
     });
     res.status(201).json(newSeason);
   } catch (error) {
