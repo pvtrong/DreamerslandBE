@@ -110,7 +110,7 @@ module.exports.getTopuser = async (req, res, next) => {
         if (rank) {
           rank.rank_name = userSeasonRanks[0].rank.rank_name;
           rank.img_url = userSeasonRanks[0].rank.img_url;
-          rank.bonus =
+          rank.rankPoint =
             userSeasonRanks[0].point > 100 ? 100 :  userSeasonRanks[0].point;
         }
 
@@ -161,6 +161,7 @@ const handleAdd = (data) => {
         ...result[userId],
         amount: result[userId].amount + item.amount,
         point: result[userId].point + item.point,
+        bonus: result[userId].bonus + item.bonus,
       };
     }
   });
