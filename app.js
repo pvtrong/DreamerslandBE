@@ -35,7 +35,12 @@ app.get('/', (req, res, next) => {
 
 const taskRoute = require('./routes/taskRoute');
 const userRoute = require('./routes/userRoute');
-app.use([taskRoute, userRoute]); // you can add more routes in this array
+const saleRoute = require('./routes/saleRoute');
+const seasonRoute = require('./routes/seasonRoute')
+const rankRoute = require('./routes/rankRoute')
+const topUserRoute = require('./routes/topUserRoute')
+const userSeaonRankRoute = require('./routes/userRankSeasonRoute')
+app.use([taskRoute, userRoute,saleRoute,seasonRoute,rankRoute,topUserRoute,userSeaonRankRoute]); // you can add more routes in this array
 
 //404 error
 app.get('*', function (req, res) {

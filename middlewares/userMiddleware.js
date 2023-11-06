@@ -1,7 +1,9 @@
 let yup = require('yup');
 const jwt = require('jsonwebtoken');
 const { User } = require('../db');
+const { Role } = require('../db');
 const { Op } = require('sequelize');
+const { ROLE } = require('../models/Role');
 
 // ========================================================================
 
@@ -15,6 +17,10 @@ let schemaSignup = yup.object().shape({
 		.string()
 		.required('Please enter New Password')
 		.min(6, 'Please enter minimum 6 characters'),
+	phone_number: yup
+		.string()
+		.required('Please enter Phone Number')
+		.min(10, 'Please enter minimum 10 characters'),
 });
 
 // Validation - Signup
@@ -27,6 +33,7 @@ module.exports.validationSignup = (req, res, next) => {
 			{
 				email: req.body.email,
 				password: req.body.password,
+				phone_number: req.body.phone_number
 			},
 			{ abortEarly: false }
 		)
@@ -45,7 +52,7 @@ module.exports.isUserExistsSignup = async (req, res, next) => {
 	try {
 		const user = await User.findOne({
 			where: {
-				email: req.body.email,
+				phone_number: req.body.phone_number,
 			},
 		});
 
@@ -65,10 +72,10 @@ module.exports.isUserExistsSignup = async (req, res, next) => {
 
 // Schema - Login
 let schemaLogin = yup.object().shape({
-	email: yup
+	phone_number: yup
 		.string()
-		.required('Please enter Email')
-		.email('Please enter valid Email'),
+		.required('Please enter Phone Number')
+		.min(10, 'Please enter minimum 10 characters'),
 	password: yup
 		.string()
 		.required('Please enter New Password')
@@ -82,7 +89,7 @@ module.exports.validateLogin = (req, res, next) => {
 	schemaLogin
 		.validate(
 			{
-				email: req.body.email,
+				phone_number: req.body.phone_number,
 				password: req.body.password,
 			},
 			{ abortEarly: false }
@@ -106,7 +113,7 @@ module.exports.authenticateToken = (req, res, next) => {
 			process.env.AUTH_SECRET,
 			(err, decoded) => {
 				if (err) {
-					let err = new Error('Unauthorized');
+					let err = new Error('Bạn đang không đăng nhập');
 					err.field = 'login';
 					return next(err);
 				} else {
@@ -116,7 +123,23 @@ module.exports.authenticateToken = (req, res, next) => {
 			}
 		);
 	} else {
-		let err = new Error('Unauthorized');
+		let err = new Error('Bạn đang không đăng nhập');
+		err.field = 'login';
+		return next(err);
+	}
+};
+
+module.exports.isAdmin = async (req, res, next) => {
+
+	const role = await Role.findOne({
+		where: {
+			user_id: req.user.id || ''
+		},
+	});
+	if (role && role.role_id === ROLE.ADMIN) {
+		return next()
+	} else {
+		let err = new Error('Account is not a Admin');
 		err.field = 'login';
 		return next(err);
 	}
@@ -126,14 +149,15 @@ module.exports.authenticateToken = (req, res, next) => {
 
 // Schema - UpdateProfile
 let schemaUpdateProfile = yup.object().shape({
-	first_name: yup.string().required('Please enter first name'),
-	last_name: yup.string().required('Please enter last name'),
+	first_name: yup.string(),
+	last_name: yup.string(),
 	bio: yup.string(),
 	email: yup
 		.string()
-		.required()
-		.required('Please enter Email')
 		.email('Please enter valid Email'),
+	phone_number: yup
+		.string()
+		.min(10, 'Please enter minimum 10 characters'),
 });
 
 // Validation - UpdateProfile
@@ -148,6 +172,7 @@ module.exports.validationUpdateProfile = (req, res, next) => {
 				last_name: req.body.last_name,
 				bio: req.body.bio,
 				email: req.body.email,
+				phone_number: req.body.phone_number,
 			},
 			{ abortEarly: false }
 		)
@@ -166,16 +191,39 @@ module.exports.isUserExistsUpdate = async (req, res, next) => {
 	try {
 		const user = await User.findOne({
 			where: {
-				email: req.body.email,
 				id: {
 					[Op.ne]: req.user.id,
 				},
 			},
 		});
 
-		if (user) {
-			let err = new Error('Email already registered.');
-			err.field = 'email';
+		if (!user) {
+			let err = new Error('Phone Number already registered.');
+			err.field = 'phone_number';
+			return next(err);
+		}
+
+		next();
+	} catch (err) {
+		return next(err);
+	}
+};
+module.exports.isUserExistsUpdateForAdmin = async (req, res, next) => {
+	console.log('🐞 isUserExistsUpdateForAdmin');
+
+	try {
+		const idUser = req.params.id || '';
+		const user = await User.findOne({
+			where: {
+				id: {
+					[Op.ne]: idUser,
+				},
+			},
+		});
+
+		if (!user) {
+			let err = new Error('User does not exist');
+			err.field = 'id';
 			return next(err);
 		}
 
@@ -189,6 +237,10 @@ module.exports.isUserExistsUpdate = async (req, res, next) => {
 
 // Schema - ChangePassword
 let schemaChangePassword = yup.object().shape({
+
+	old_password: yup
+		.string()
+		.required('Please enter Old Password'),
 	new_password: yup
 		.string()
 		.required('Please enter New Password')
@@ -211,6 +263,7 @@ module.exports.validationChangePassword = (req, res, next) => {
 	schemaChangePassword
 		.validate(
 			{
+				old_password: req.body.old_password,
 				new_password: req.body.new_password,
 				repeat_new_password: req.body.repeat_new_password,
 			},
@@ -297,6 +350,15 @@ let schemaResetPassword = yup.object().shape({
 	token: yup.string().required('Reset password token not found'),
 });
 
+let schemaDeleteUser = yup.object().shape({
+	phone_number: yup
+		.string()
+		.required('Please enter Phone Number')
+		.min(10, 'Please enter minimum 10 characters'),
+});
+
+
+
 // Validation - ResetPassword
 module.exports.validationResetPassword = (req, res, next) => {
 	// validations here
@@ -308,6 +370,27 @@ module.exports.validationResetPassword = (req, res, next) => {
 				new_password: req.body.new_password,
 				repeat_new_password: req.body.repeat_new_password,
 				token: req.body.token,
+			},
+			{ abortEarly: false }
+		)
+		.then(function () {
+			next();
+		})
+		.catch(function (err) {
+			return next(err);
+		});
+};
+
+module.exports.validationDeleteUser = (req, res, next) => {
+	// validations here
+	console.log('🐞 validationDeleteUser');
+
+	const phone = req.params.phone_number || ''
+
+	schemaDeleteUser
+		.validate(
+			{
+				phone_number: phone,
 			},
 			{ abortEarly: false }
 		)
