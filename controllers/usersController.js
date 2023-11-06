@@ -730,6 +730,53 @@ module.exports.resetPassword = async (req, res, next) => {
 		return next(err);
 	}
 };
+module.exports.adminResetPassword = async (req, res, next) => {
+
+	try {
+		var id = req.params.id || ''
+
+		// encrypt password
+		var salt = bcrypt.genSaltSync(10);
+		var hash = bcrypt.hashSync(req.body.new_password, salt);
+		const new_password = hash;
+
+		const user = await User.findOne(
+			{
+				where: {
+					id: {
+						[Op.eq]: id,
+					},
+				},
+			}
+		);
+		if (user) {
+
+			user.password = new_password;
+			var userData = {
+				id: user.id,
+				email: user.email,
+				first_name: user.first_name,
+				last_name: user.last_name,
+				bio: user.bio,
+				phone_number: user.phone_number,
+				created_at: user.createdAt,
+				updated_at: user.updatedAt
+			};
+			const resUpdate = await user.save();
+			return res.json({
+				status: 'success',
+				result: resUpdate ? userData : false,
+			});
+		}
+		else {
+			let err = new Error('Invalid User');
+			err.field = 'login';
+			return next(err);
+		}
+	} catch (err) {
+		return next(err);
+	}
+};
 module.exports.deleteUser = async (req, res, next) => {
 	try {
 		var phone_number = req.params.phone_number || '';

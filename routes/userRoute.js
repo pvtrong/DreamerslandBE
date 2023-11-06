@@ -11,6 +11,7 @@ const {
 	isUserExistsUpdate,
 	isUserExistsUpdateForAdmin,
 	validationChangePassword,
+	validationAdminResertPassword,
 	validationForgotPassword,
 	isEmailRegistered,
 	validationResetPassword,
@@ -47,6 +48,11 @@ router.post(
 	'/user/change_password',
 	[authenticateToken, validationChangePassword],
 	usersController.changePassword
+);
+router.post(
+	'/admin/reset_password/:id',
+	[authenticateToken, isAdmin, validationAdminResertPassword],
+	usersController.adminResetPassword
 );
 router.post(
 	'/user/forgot_password',
