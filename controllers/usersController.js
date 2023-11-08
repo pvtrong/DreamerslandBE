@@ -24,6 +24,8 @@ module.exports.signUp = async (req, res, next) => {
 		const first_name = req.body.first_name;
 		const last_name = req.body.last_name;
 		const phone_number = req.body.phone_number;
+		const bio = req.body.bio;
+		const nickname = req.body.nickname;
 
 		// encrypt password
 		var salt = bcrypt.genSaltSync(10);
@@ -39,6 +41,8 @@ module.exports.signUp = async (req, res, next) => {
 			phone_number: phone_number,
 			password: password,
 			token: token,
+			bio: bio,
+			nickname: nickname,
 		});
 		const resUserVerify = await this.signUpVerifyImmediate(token);
 		const resSignUp = {
@@ -46,6 +50,8 @@ module.exports.signUp = async (req, res, next) => {
 			last_name: last_name,
 			email: email,
 			phone_number: phone_number,
+			bio: bio,
+			nickname: nickname,
 		}
 		const roleUser = await Role.create({
 			role_id: ROLE.NORMAL_USER,
@@ -170,6 +176,7 @@ module.exports.loginUser = async (req, res, next) => {
 						first_name: user.first_name,
 						last_name: user.last_name,
 						bio: user.bio,
+						nickname: user.nickname,
 						phone_number: user.phone_number,
 						created_at: user.createdAt,
 						updated_at: user.updatedAt
@@ -228,6 +235,7 @@ module.exports.loginAdmin = async (req, res, next) => {
 						first_name: user.first_name,
 						last_name: user.last_name,
 						bio: user.bio,
+						nickname: user.nickname,
 						phone_number: user.phone_number
 					};
 					return res.json({
@@ -549,6 +557,7 @@ module.exports.updateProfileUser = async (req, res, next) => {
 		var bio = req.body.bio;
 		var email = req.body.email;
 		var phone_number = req.body.phone_number;
+		var nickname = req.body.nickname;
 
 		const result = await User.update(
 			{
@@ -557,6 +566,7 @@ module.exports.updateProfileUser = async (req, res, next) => {
 				bio: bio,
 				email: email,
 				phone_number: phone_number,
+				nickname: nickname,
 			},
 			{
 				where: {

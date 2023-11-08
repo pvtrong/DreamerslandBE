@@ -52,6 +52,10 @@ module.exports.UserModel = (sequelize) => {
 				type: DataTypes.DATE,
 				allowNull: true,
 			},
+			nickname: {
+				type: DataTypes.STRING,
+				allowNull: true,
+			}
 		},
 		{
 			// Other model options go here
