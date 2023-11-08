@@ -69,8 +69,8 @@ module.exports.getTopuser = async (req, res, next) => {
         model: User,
         as: "user",
         attributes: { exclude: ["token", "password", "is_verified"] },
-        where:{
-          deleted_at: null
+        where: {
+          deleted_at: null,
         },
         include: [
           {
@@ -111,7 +111,7 @@ module.exports.getTopuser = async (req, res, next) => {
           rank.rank_name = userSeasonRanks[0].rank.rank_name;
           rank.img_url = userSeasonRanks[0].rank.img_url;
           rank.rankPoint =
-            userSeasonRanks[0].point > 100 ? 100 :  userSeasonRanks[0].point;
+            userSeasonRanks[0].point > 100 ? 100 : userSeasonRanks[0].point;
         }
 
         // Loại bỏ key "userSeasonRanks" và thêm key "rank" với giá trị là rank
@@ -156,12 +156,15 @@ const handleAdd = (data) => {
     const userId = item.user.id;
     if (!result[userId]) {
       result[userId] = item;
+      result[userId].totalPoint = result[userId].point;
+      result[userId].point = result[userId].point - result[userId].bonus;
     } else {
       result[userId] = {
         ...result[userId],
         amount: result[userId].amount + item.amount,
-        point: result[userId].point + item.point,
+        point: result[userId].point + (item.point - item.bonus),
         bonus: result[userId].bonus + item.bonus,
+        totalPoint: result[userId].totalPoint + item.point,
       };
     }
   });
