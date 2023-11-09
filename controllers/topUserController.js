@@ -18,18 +18,15 @@ const SORT_BY = {
 };
 module.exports.getTopuser = async (req, res, next) => {
   try {
-    let { from, to, season_id, page, limit, sort_by } = req.query;
+    let { from, to, sort_by } = req.query;
 
     // Nếu ko truyền sort_by thì mặc định là sắp xếp theo point
     if (Object.values(SORT_BY).includes(sort_by)) {
       sort_by = SORT_BY.POINT;
     }
-    const offset = (Number(page) - 1) * Number(limit);
     const whereClause = {};
 
-    if (season_id) {
-      whereClause.season_id = season_id;
-    }
+   
     if (from) {
       const fromDate = new Date(from);
       fromDate.setHours(0, 0, 0, 0);
@@ -53,15 +50,7 @@ module.exports.getTopuser = async (req, res, next) => {
       });
     }
 
-    // Check Season
-    if (season_id) {
-      const seasonCurrent = await Season.findByPk(season_id, {
-        raw: true,
-      });
-      if (!seasonCurrent) {
-        next({ statusCode: 400, message: "Season không hợp lệ" });
-      }
-    }
+   
 
     let include = [
       // Bổ sung thông tin từ mối quan hệ "season"
@@ -82,16 +71,12 @@ module.exports.getTopuser = async (req, res, next) => {
                 as: "rank",
               },
             ],
-            where: {
-              season_id,
-            },
+           
           },
         ],
       },
     ];
-    if (season_id) {
-      include.push({ model: Season, as: "season" });
-    }
+    
     let listSale = await Sale.findAll({
       where: whereClause,
       attributes: { exclude: ["user_id", "season_id"] },
