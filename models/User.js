@@ -55,6 +55,10 @@ module.exports.UserModel = (sequelize) => {
 			nickname: {
 				type: DataTypes.STRING,
 				allowNull: true,
+			},
+			avatar_url: {
+				type: DataTypes.STRING,
+				allowNull: true,
 			}
 		},
 		{

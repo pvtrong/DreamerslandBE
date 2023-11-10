@@ -179,7 +179,8 @@ module.exports.loginUser = async (req, res, next) => {
 						nickname: user.nickname,
 						phone_number: user.phone_number,
 						created_at: user.createdAt,
-						updated_at: user.updatedAt
+						updated_at: user.updatedAt,
+						avatar_url: user.avatar_url
 					};
 					return res.json({
 						user: userData,
@@ -236,7 +237,8 @@ module.exports.loginAdmin = async (req, res, next) => {
 						last_name: user.last_name,
 						bio: user.bio,
 						nickname: user.nickname,
-						phone_number: user.phone_number
+						phone_number: user.phone_number,
+						avatar_url: user.avatar_url
 					};
 					return res.json({
 						user: userData,
