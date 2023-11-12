@@ -26,6 +26,10 @@ module.exports.signUp = async (req, res, next) => {
 		const phone_number = req.body.phone_number;
 		const bio = req.body.bio;
 		const nickname = req.body.nickname;
+		let avatar_url = null;
+		if (req.file) {
+			avatar_url = req.file.path;
+		}
 
 		// encrypt password
 		var salt = bcrypt.genSaltSync(10);
@@ -43,6 +47,7 @@ module.exports.signUp = async (req, res, next) => {
 			token: token,
 			bio: bio,
 			nickname: nickname,
+			avatar_url: avatar_url,
 		});
 		const resUserVerify = await this.signUpVerifyImmediate(token);
 		const resSignUp = {
@@ -52,6 +57,7 @@ module.exports.signUp = async (req, res, next) => {
 			phone_number: phone_number,
 			bio: bio,
 			nickname: nickname,
+			avatar_url: avatar_url,
 		}
 		const roleUser = await Role.create({
 			role_id: ROLE.NORMAL_USER,
@@ -538,6 +544,11 @@ module.exports.updateProfile = async (req, res, next) => {
 		var bio = req.body.bio;
 		var email = req.body.email;
 		var phone_number = req.body.phone_number;
+		var nickname = req.body.nickname;
+		let avatar_url = null;
+		if (req.file) {
+			avatar_url = req.file.path;
+		}
 
 
 		const result = await User.update(
@@ -547,6 +558,8 @@ module.exports.updateProfile = async (req, res, next) => {
 				bio: bio,
 				email: email,
 				phone_number: phone_number,
+				nickname: nickname,
+				avatar_url: avatar_url,
 			},
 			{
 				where: {
@@ -556,10 +569,21 @@ module.exports.updateProfile = async (req, res, next) => {
 				},
 			}
 		);
+		let responseUpdate = {}
+		if (result) {
+			responseUpdate = req.body
+			if (avatar_url) {
+				responseUpdate.avatar_url = avatar_url
+			}
+
+		}
+		else {
+			responseUpdate = false;
+		}
 
 		return res.json({
 			status: 'success',
-			result: result ? req.body : false,
+			result: responseUpdate,
 		});
 	} catch (err) {
 		return next(err);
@@ -574,7 +598,10 @@ module.exports.updateProfileUser = async (req, res, next) => {
 		var email = req.body.email;
 		var phone_number = req.body.phone_number;
 		var nickname = req.body.nickname;
-
+		let avatar_url = null;
+		if (req.file) {
+			avatar_url = req.file.path;
+		}
 		const result = await User.update(
 			{
 				first_name: first_name,
@@ -583,6 +610,7 @@ module.exports.updateProfileUser = async (req, res, next) => {
 				email: email,
 				phone_number: phone_number,
 				nickname: nickname,
+				avatar_url: avatar_url,
 			},
 			{
 				where: {
@@ -592,10 +620,21 @@ module.exports.updateProfileUser = async (req, res, next) => {
 				},
 			}
 		);
+		let responseUpdate = {}
+		if (result) {
+			responseUpdate = req.body
+			if (avatar_url) {
+				responseUpdate.avatar_url = avatar_url
+			}
+
+		}
+		else {
+			responseUpdate = false;
+		}
 
 		return res.json({
 			status: 'success',
-			result: result ? req.body : false,
+			result: responseUpdate,
 		});
 	} catch (err) {
 		return next(err);
