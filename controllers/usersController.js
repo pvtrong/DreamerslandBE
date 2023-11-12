@@ -16,16 +16,27 @@ const jwt = require('jsonwebtoken');
 const { ROLE } = require('../models/Role');
 const { getPageSize } = require('../services/utils');
 const { now, cloneDeep } = require('lodash');
+const { getStorage } = require("firebase/storage");
 
 // SignUp
 module.exports.signUp = async (req, res, next) => {
 	try {
+		const storage = getStorage();
+
 		const email = req.body.email;
 		const first_name = req.body.first_name;
 		const last_name = req.body.last_name;
 		const phone_number = req.body.phone_number;
 		const bio = req.body.bio;
 		const nickname = req.body.nickname;
+		const avatar_url = req.body.avatar_url;
+		if (avatar_url) {
+			const fileInfo = utils.extractFileInfoFromBase64(avatar_url);
+			if (fileInfo.isFile) {
+				console.log("🚀 ~ file: usersController.js:37 ~ module.exports.signUp= ~ fileInfo.fileExtension:", fileInfo.fileExtension)
+				console.log("🚀 ~ file: usersController.js:39 ~ module.exports.signUp= ~ fileInfo.mimeType:", fileInfo.mimeType)
+			}
+		}
 
 		// encrypt password
 		var salt = bcrypt.genSaltSync(10);

@@ -3,7 +3,9 @@ const express = require('express');
 const cors = require('cors');
 const morgan = require('morgan');
 const helmet = require('helmet');
-
+const { firebaseConfig } = require('./config/firebase.config');
+const { initializeApp } = require("firebase/app");
+const { getStorage } = require("firebase/storage");
 const app = express();
 
 app.use(helmet());
@@ -15,8 +17,8 @@ app.use(
 		origin: '*',
 	})
 );
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
+app.use(express.json({ limit: '20mb' }));
+app.use(express.urlencoded({ limit: '20mb', extended: true }));
 app.use(express.static(__dirname + '/public')); // folder to upload files
 
 global.__basedir = __dirname; // very important to define base directory of the project. this is useful while creating upload scripts
@@ -40,8 +42,16 @@ const seasonRoute = require('./routes/seasonRoute')
 const rankRoute = require('./routes/rankRoute')
 const topUserRoute = require('./routes/topUserRoute')
 const userSeaonRankRoute = require('./routes/userRankSeasonRoute')
-app.use([taskRoute, userRoute,saleRoute,seasonRoute,rankRoute,topUserRoute,userSeaonRankRoute]); // you can add more routes in this array
+app.use([taskRoute, userRoute, saleRoute, seasonRoute, rankRoute, topUserRoute, userSeaonRankRoute]); // you can add more routes in this array
 
+const firebaseApp = initializeApp(firebaseConfig);
+// admin.initializeApp({
+// 	credential: admin.credential.cert(serviceAccount),
+// 	storageBucket: 'your-project-id.appspot.com', // Thay thế bằng Storage Bucket của bạn
+// });
+
+
+const storage = getStorage();
 //404 error
 app.get('*', function (req, res) {
 	res.status(404).json({
@@ -62,7 +72,6 @@ app.use((err, req, res, next) => {
 		err: err,
 	});
 });
-
 // Run the server
 const port = process.env.PORT || 3000;
 app.listen(port, () =>

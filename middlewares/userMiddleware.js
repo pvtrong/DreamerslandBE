@@ -27,6 +27,7 @@ let schemaSignup = yup.object().shape({
 module.exports.validationSignup = (req, res, next) => {
 	// validations here
 	console.log('🐞 validationSignup');
+	console.log("🚀 ~ file: userMiddleware.js:35 ~ req.body.email:", req.body.email)
 
 	schemaSignup
 		.validate(
