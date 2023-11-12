@@ -10,12 +10,11 @@ const { isAdmin, authenticateToken } = require("../middlewares/userMiddleware");
 // Import Controllers
 router.get(
   "/season/:id",
-  [authenticateToken, isAdmin],
   seasonController.getDeitailSeason
 );
 router.get(
   "/season",
-  [authenticateToken, isAdmin],
+  
   seasonController.getAllSeason
 );
 router.post(

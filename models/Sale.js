@@ -16,7 +16,11 @@ module.exports.SaleModel = (sequelize) => {
 			},
 			point: {
 				type: DataTypes.DOUBLE,
-				allowNull: true,
+				allowNull: false,
+			},
+			bonus: {
+				type: DataTypes.DOUBLE,
+				allowNull: false,
 			},
 			date_time: {
 				type: DataTypes.DATE,
