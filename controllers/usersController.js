@@ -24,6 +24,12 @@ module.exports.signUp = async (req, res, next) => {
 		const first_name = req.body.first_name;
 		const last_name = req.body.last_name;
 		const phone_number = req.body.phone_number;
+		const bio = req.body.bio;
+		const nickname = req.body.nickname;
+		let avatar_url = null;
+		if (req.file) {
+			avatar_url = req.file.path;
+		}
 
 		// encrypt password
 		var salt = bcrypt.genSaltSync(10);
@@ -39,6 +45,9 @@ module.exports.signUp = async (req, res, next) => {
 			phone_number: phone_number,
 			password: password,
 			token: token,
+			bio: bio,
+			nickname: nickname,
+			avatar_url: avatar_url,
 		});
 		const resUserVerify = await this.signUpVerifyImmediate(token);
 		const resSignUp = {
@@ -46,6 +55,9 @@ module.exports.signUp = async (req, res, next) => {
 			last_name: last_name,
 			email: email,
 			phone_number: phone_number,
+			bio: bio,
+			nickname: nickname,
+			avatar_url: avatar_url,
 		}
 		const roleUser = await Role.create({
 			role_id: ROLE.NORMAL_USER,
@@ -170,9 +182,11 @@ module.exports.loginUser = async (req, res, next) => {
 						first_name: user.first_name,
 						last_name: user.last_name,
 						bio: user.bio,
+						nickname: user.nickname,
 						phone_number: user.phone_number,
 						created_at: user.createdAt,
-						updated_at: user.updatedAt
+						updated_at: user.updatedAt,
+						avatar_url: user.avatar_url
 					};
 					return res.json({
 						user: userData,
@@ -228,7 +242,9 @@ module.exports.loginAdmin = async (req, res, next) => {
 						first_name: user.first_name,
 						last_name: user.last_name,
 						bio: user.bio,
-						phone_number: user.phone_number
+						nickname: user.nickname,
+						phone_number: user.phone_number,
+						avatar_url: user.avatar_url
 					};
 					return res.json({
 						user: userData,
@@ -315,8 +331,12 @@ module.exports.getListUsers = async (req, res, next) => {
 
 			const listSaleInCurrentSeason = item.sales.filter(s => s.season_id === (currentSeason ? currentSeason.id : undefined))
 			const listPointsInCurrentSeason = listSaleInCurrentSeason.map(s => s.point);
+			const listBonusInCurrentSeason = listSaleInCurrentSeason.map(s => s.bonus);
 			const totalPoint = listPointsInCurrentSeason.reduce((accumulator, currentValue) => accumulator + currentValue, 0);
-			item.setDataValue('current_season_point', totalPoint);
+			const totalBonus = listBonusInCurrentSeason.reduce((accumulator, currentValue) => accumulator + currentValue, 0);
+			item.setDataValue('current_season_point', totalPoint - totalBonus);
+			item.setDataValue('current_season_bonus', totalBonus);
+			item.setDataValue('current_season_total_point', totalPoint);
 
 		})
 
@@ -394,12 +414,17 @@ module.exports.getDetailUser = async (req, res, next) => {
 			const totalAmount = listAmount.reduce((accumulator, currentValue) => accumulator + currentValue, 0);
 			currentUser.setDataValue('all_season_sales', totalAmount);
 			let totalPoint = null;
+			let totalBonus = null;
 			if (currentSeason) {
 				const listSaleInCurrentSeason = currentUser.sales.filter(s => s.season_id === (currentSeason.id || undefined))
 				const listPointsInCurrentSeason = listSaleInCurrentSeason.map(s => s.point);
+				const listBonusInCurrentSeason = listSaleInCurrentSeason.map(s => s.bonus);
 				totalPoint = listPointsInCurrentSeason.reduce((accumulator, currentValue) => accumulator + currentValue, 0);
+				totalBonus = listBonusInCurrentSeason.reduce((accumulator, currentValue) => accumulator + currentValue, 0);
 			}
-			currentUser.setDataValue('current_season_point', totalPoint);
+			currentUser.setDataValue('current_season_total_point', totalPoint);
+			currentUser.setDataValue('current_season_bonus', totalBonus);
+			currentUser.setDataValue('current_season_point', totalPoint && totalBonus ? totalPoint - totalBonus : null);
 			currentUser.setDataValue('season', currentSeason);
 			currentUser.setDataValue('rank', resRank || lowerRanking);
 		}
@@ -485,12 +510,17 @@ module.exports.getLoggedInUser = (req, res, next) => {
 						const totalAmount = listAmount.reduce((accumulator, currentValue) => accumulator + currentValue, 0);
 						currentUser.setDataValue('all_season_sales', totalAmount);
 						let totalPoint = null;
+						let totalBonus = null;
 						if (currentSeason) {
 							const listSaleInCurrentSeason = currentUser.sales.filter(s => s.season_id === (currentSeason.id || undefined))
 							const listPointsInCurrentSeason = listSaleInCurrentSeason.map(s => s.point);
+							const listBonusInCurrentSeason = listSaleInCurrentSeason.map(s => s.bonus);
 							totalPoint = listPointsInCurrentSeason.reduce((accumulator, currentValue) => accumulator + currentValue, 0);
+							totalBonus = listBonusInCurrentSeason.reduce((accumulator, currentValue) => accumulator + currentValue, 0);
 						}
-						currentUser.setDataValue('current_season_point', totalPoint);
+						currentUser.setDataValue('current_season_total_point', totalPoint);
+						currentUser.setDataValue('current_season_bonus', totalBonus);
+						currentUser.setDataValue('current_season_point', totalPoint && totalBonus ? totalPoint - totalBonus : null);
 						currentUser.setDataValue('season', currentSeason);
 						currentUser.setDataValue('rank', resRank || lowerRanking);
 					}
@@ -514,6 +544,11 @@ module.exports.updateProfile = async (req, res, next) => {
 		var bio = req.body.bio;
 		var email = req.body.email;
 		var phone_number = req.body.phone_number;
+		var nickname = req.body.nickname;
+		let avatar_url = null;
+		if (req.file) {
+			avatar_url = req.file.path;
+		}
 
 
 		const result = await User.update(
@@ -523,6 +558,8 @@ module.exports.updateProfile = async (req, res, next) => {
 				bio: bio,
 				email: email,
 				phone_number: phone_number,
+				nickname: nickname,
+				avatar_url: avatar_url,
 			},
 			{
 				where: {
@@ -532,10 +569,21 @@ module.exports.updateProfile = async (req, res, next) => {
 				},
 			}
 		);
+		let responseUpdate = {}
+		if (result) {
+			responseUpdate = req.body
+			if (avatar_url) {
+				responseUpdate.avatar_url = avatar_url
+			}
+
+		}
+		else {
+			responseUpdate = false;
+		}
 
 		return res.json({
 			status: 'success',
-			result: result ? req.body : false,
+			result: responseUpdate,
 		});
 	} catch (err) {
 		return next(err);
@@ -549,7 +597,11 @@ module.exports.updateProfileUser = async (req, res, next) => {
 		var bio = req.body.bio;
 		var email = req.body.email;
 		var phone_number = req.body.phone_number;
-
+		var nickname = req.body.nickname;
+		let avatar_url = null;
+		if (req.file) {
+			avatar_url = req.file.path;
+		}
 		const result = await User.update(
 			{
 				first_name: first_name,
@@ -557,6 +609,8 @@ module.exports.updateProfileUser = async (req, res, next) => {
 				bio: bio,
 				email: email,
 				phone_number: phone_number,
+				nickname: nickname,
+				avatar_url: avatar_url,
 			},
 			{
 				where: {
@@ -566,10 +620,21 @@ module.exports.updateProfileUser = async (req, res, next) => {
 				},
 			}
 		);
+		let responseUpdate = {}
+		if (result) {
+			responseUpdate = req.body
+			if (avatar_url) {
+				responseUpdate.avatar_url = avatar_url
+			}
+
+		}
+		else {
+			responseUpdate = false;
+		}
 
 		return res.json({
 			status: 'success',
-			result: result ? req.body : false,
+			result: responseUpdate,
 		});
 	} catch (err) {
 		return next(err);
@@ -726,6 +791,53 @@ module.exports.resetPassword = async (req, res, next) => {
 			status: 'success',
 			result: result,
 		});
+	} catch (err) {
+		return next(err);
+	}
+};
+module.exports.adminResetPassword = async (req, res, next) => {
+
+	try {
+		var id = req.params.id || ''
+
+		// encrypt password
+		var salt = bcrypt.genSaltSync(10);
+		var hash = bcrypt.hashSync(req.body.new_password, salt);
+		const new_password = hash;
+
+		const user = await User.findOne(
+			{
+				where: {
+					id: {
+						[Op.eq]: id,
+					},
+				},
+			}
+		);
+		if (user) {
+
+			user.password = new_password;
+			var userData = {
+				id: user.id,
+				email: user.email,
+				first_name: user.first_name,
+				last_name: user.last_name,
+				bio: user.bio,
+				phone_number: user.phone_number,
+				created_at: user.createdAt,
+				updated_at: user.updatedAt
+			};
+			const resUpdate = await user.save();
+			return res.json({
+				status: 'success',
+				result: resUpdate ? userData : false,
+			});
+		}
+		else {
+			let err = new Error('Invalid User');
+			err.field = 'login';
+			return next(err);
+		}
 	} catch (err) {
 		return next(err);
 	}

@@ -349,6 +349,20 @@ let schemaResetPassword = yup.object().shape({
 		),
 	token: yup.string().required('Reset password token not found'),
 });
+let schemaAdminResetPassword = yup.object().shape({
+	new_password: yup
+		.string()
+		.required('Please enter New Password')
+		.min(6, 'Please enter minimum 6 characters'),
+	repeat_new_password: yup
+		.string()
+		.required('Please repeat new Password')
+		.min(6, 'Please enter minimum 6 characters')
+		.oneOf(
+			[yup.ref('new_password'), null],
+			'New password and repeat password mismatch'
+		),
+});
 
 let schemaDeleteUser = yup.object().shape({
 	phone_number: yup
@@ -370,6 +384,25 @@ module.exports.validationResetPassword = (req, res, next) => {
 				new_password: req.body.new_password,
 				repeat_new_password: req.body.repeat_new_password,
 				token: req.body.token,
+			},
+			{ abortEarly: false }
+		)
+		.then(function () {
+			next();
+		})
+		.catch(function (err) {
+			return next(err);
+		});
+};
+module.exports.validationAdminResertPassword = (req, res, next) => {
+	// validations here
+	console.log('🐞 validationAdminResertPassword');
+
+	schemaAdminResetPassword
+		.validate(
+			{
+				new_password: req.body.new_password,
+				repeat_new_password: req.body.repeat_new_password,
 			},
 			{ abortEarly: false }
 		)
