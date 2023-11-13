@@ -16,6 +16,7 @@ const jwt = require('jsonwebtoken');
 const { ROLE } = require('../models/Role');
 const { getPageSize } = require('../services/utils');
 const { now, cloneDeep } = require('lodash');
+const { EXPIRED_TOKEN } = require('../constants/common.js')
 
 // SignUp
 module.exports.signUp = async (req, res, next) => {
@@ -191,7 +192,7 @@ module.exports.loginUser = async (req, res, next) => {
 					return res.json({
 						user: userData,
 						token: jwt.sign(userData, process.env.AUTH_SECRET, {
-							expiresIn: '2h',
+							expiresIn: EXPIRED_TOKEN,
 						}), // Expires in 2 Hour
 					});
 				} else {
@@ -249,7 +250,7 @@ module.exports.loginAdmin = async (req, res, next) => {
 					return res.json({
 						user: userData,
 						token: jwt.sign(userData, process.env.AUTH_SECRET, {
-							expiresIn: '2h',
+							expiresIn: EXPIRED_TOKEN,
 						}), // Expires in 2 Hour
 					});
 				} else {
