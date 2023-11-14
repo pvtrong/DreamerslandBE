@@ -16,7 +16,8 @@ const jwt = require('jsonwebtoken');
 const { ROLE } = require('../models/Role');
 const { getPageSize } = require('../services/utils');
 const { now, cloneDeep } = require('lodash');
-const { EXPIRED_TOKEN } = require('../constants/common.js')
+const moment = require("moment");
+const { EXPIRED_TOKEN, FORMAT_DATE } = require('../constants/common.js');
 
 // SignUp
 module.exports.signUp = async (req, res, next) => {
@@ -292,6 +293,18 @@ module.exports.getListUsers = async (req, res, next) => {
 				{
 					model: Sale, as: "sales",
 					attributes: { exclude: ['user_id', 'createdAt', 'updatedAt'] },
+				},
+				{
+					model: User_Season_Rank, as: "userSeasonRanks",
+					include: [
+						{
+							model: Rank, as: "rank",
+						},
+						{
+							model: Season, as: "season",
+						},
+
+					],
 				}
 			],
 			where: {
@@ -306,10 +319,16 @@ module.exports.getListUsers = async (req, res, next) => {
 
 			},
 		}
+		const lowerRanking = await Rank.findOne({
+			where: {
+				order: 1
+			},
+		})
+		const dateToday = new Date(moment(now()).format(FORMAT_DATE.YYYYMMDD));
 		const currentSeason = await Season.findOne({
 			where: {
-				start_date: { [Op.lte]: now(), },
-				end_date: { [Op.gte]: now(), },
+				start_date: { [Op.lte]: dateToday, },
+				end_date: { [Op.gte]: dateToday, },
 			},
 		})
 		const userForCount = await User.findAll({
@@ -326,6 +345,16 @@ module.exports.getListUsers = async (req, res, next) => {
 		allUsers.forEach(item => {
 			delete item.dataValues.roles;
 			delete item.dataValues.sales;
+			delete item.dataValues.userSeasonRanks;
+
+			let currentRankOfUser = lowerRanking;
+			if (item.userSeasonRanks.length > 0) {
+				const seasonNow = item.userSeasonRanks.find(x => x.season.id === currentSeason.id);
+				if (seasonNow) {
+					currentRankOfUser = seasonNow.rank
+				}
+			}
+			item.setDataValue('current_season_rank', currentRankOfUser);
 			const listAmount = item.sales.map(s => s.amount);
 			const totalAmount = listAmount.reduce((accumulator, currentValue) => accumulator + currentValue, 0);
 			item.setDataValue('all_season_sales', totalAmount);
@@ -338,7 +367,6 @@ module.exports.getListUsers = async (req, res, next) => {
 			item.setDataValue('current_season_point', totalPoint - totalBonus);
 			item.setDataValue('current_season_bonus', totalBonus);
 			item.setDataValue('current_season_total_point', totalPoint);
-
 		})
 
 		return res.json({
@@ -354,7 +382,7 @@ module.exports.getListUsers = async (req, res, next) => {
 module.exports.getDetailUser = async (req, res, next) => {
 	const user_id = req.params.id || ''
 	try {
-
+		const dateToday = new Date(moment(now()).format(FORMAT_DATE.YYYYMMDD));
 		const currentUser = await User.findOne({
 			attributes: {
 				exclude: ['password', 'is_verified', 'token'],
@@ -393,8 +421,8 @@ module.exports.getDetailUser = async (req, res, next) => {
 			],
 			required: true,
 			where: {
-				start_date: { [Op.lte]: now(), },
-				end_date: { [Op.gte]: now(), },
+				start_date: { [Op.lte]: dateToday, },
+				end_date: { [Op.gte]: dateToday, },
 			},
 			attributes: { exclude: ['createdAt', 'updatedAt'] }
 		})
@@ -473,6 +501,7 @@ module.exports.getLoggedInUser = (req, res, next) => {
 							id: decoded.id
 						},
 					});
+					const dateToday = new Date(moment(now()).format(FORMAT_DATE.YYYYMMDD));
 					const currentSeason = await Season.findOne({
 						include: [
 							{
@@ -489,8 +518,8 @@ module.exports.getLoggedInUser = (req, res, next) => {
 							},
 						],
 						where: {
-							start_date: { [Op.lte]: now(), },
-							end_date: { [Op.gte]: now(), },
+							start_date: { [Op.lte]: dateToday, },
+							end_date: { [Op.gte]: dateToday, },
 						},
 						attributes: { exclude: ['createdAt', 'updatedAt'] }
 					})
