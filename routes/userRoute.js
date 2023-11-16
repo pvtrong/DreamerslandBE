@@ -25,7 +25,7 @@ const usersController = require('../controllers/usersController');
 
 router.post(
 	'/user/signup',
-	configUpload.uploadCloud.single("avatar_url"),
+	configUpload.uploadCloud("avatar_url"),
 	validationSignup,
 	isUserExistsSignup,
 	usersController.signUp
@@ -40,7 +40,7 @@ router.post(
 	'/user/update_profile',
 	authenticateToken,
 	validationUpdateProfile,
-	configUpload.uploadCloud.single("avatar_url"),
+	configUpload.uploadCloud("avatar_url"),
 	isUserExistsUpdate,
 	usersController.updateProfile
 );
@@ -50,7 +50,7 @@ router.post(
 	validationUpdateProfile,
 	isAdmin,
 	isUserExistsUpdateForAdmin,
-	configUpload.uploadCloud.single("avatar_url"),
+	configUpload.uploadCloud("avatar_url"),
 	usersController.updateProfileUser
 );
 router.post(

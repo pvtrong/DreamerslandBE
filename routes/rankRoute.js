@@ -20,7 +20,7 @@ const { authenticateToken, isAdmin } = require("../middlewares/userMiddleware");
 router.post(
   "/rank",
   [authenticateToken, isAdmin],
-  configUpload.uploadCloud.single("image"),
+  configUpload.uploadCloud("image"),
   // validationCreateRank,
   // checkUniqueRankName,
   rankController.createRank
@@ -28,7 +28,7 @@ router.post(
 router.put(
   "/rank",
   [authenticateToken, isAdmin],
-  configUpload.uploadCloud.single("image"),
+  configUpload.uploadCloud("image"),
   checkValidId,
   validationUpdateRank,
   checkUniqueRankName,
