@@ -108,7 +108,7 @@ User.hasMany(User_Season_Rank, {
 
 // Season.hasMany(Sale, { foreignKey: 'season_id' })
 if (process.env.MIGRATE_DB == "TRUE") {
-  sequelize.sync().then(() => {
+  sequelize.sync({ alter: true }).then(() => {
     console.log(`All tables synced!`);
     process.exit(0);
   });

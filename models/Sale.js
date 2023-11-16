@@ -1,5 +1,6 @@
 const { DataTypes } = require('sequelize');
 const moment = require('moment');
+const { FORMAT_DATE } = require('../constants/common.js');
 module.exports.SaleModel = (sequelize) => {
 	return sequelize.define(
 		'Sale',
@@ -25,9 +26,9 @@ module.exports.SaleModel = (sequelize) => {
 			date_time: {
 				type: DataTypes.DATE,
 				allowNull: false,
-				defaultValue:  moment().format('YYYY-MM-DD'),
+				defaultValue: moment().format(FORMAT_DATE.YYYYMMDD),
 			},
-            
+
 		},
 		{
 			// Other model options go here

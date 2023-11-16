@@ -3,7 +3,7 @@ const { Sale } = require("../db");
 const { Season, User } = require("../db");
 
 const { Op, fn, col, literal } = require("sequelize");
-
+const { FORMAT_DATE } = require('../constants/common.js');
 // ========================================================================
 
 // Schema - Create
@@ -147,7 +147,7 @@ module.exports.existUserForDate = async (req, res, next) => {
     const { users } = req.body;
     // Check list có user đã được thêm trong ngày gửi lên
     const requestedDate =
-      req.body["date_time"] || moment().format("YYYY-MM-DD");
+      req.body["date_time"] || moment().format(FORMAT_DATE.YYYYMMDD);
     const lisUserForday = await Sale.findAll({
       attributes: ["user_id"],
       where: literal(
