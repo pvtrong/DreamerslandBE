@@ -14,7 +14,7 @@ const { getTimeExactly } = require("../services/utils");
 module.exports.createManySale;
 // create many
 module.exports.createManySale = async (req, res, next) => {
-  let { amount, users, season_id, date_time } = req.body;
+  let { amount, users, season_id, date_time, bonusTask } = req.body;
   date_time = getTimeExactly(date_time);
   try {
     let listNewSale = [];
@@ -29,11 +29,12 @@ module.exports.createManySale = async (req, res, next) => {
       const { point, bonus } = await getPoint(season_id, id, amount, next);
       const newSale = {
         season_id,
-        point,
+        point: point,
         amount,
         user_id: id,
         date_time,
         bonus,
+        bonusTask,
       };
       // Check xem nếu ứng với season_id, user_id mà chưa có trong bảng Season_user_rank. Thì thêm 1 record mới.
       await updateRankUser(season_id, id, newSale, listRank);
@@ -81,7 +82,7 @@ module.exports.updateManySale = async (req, res, next) => {
       );
       const dataUpdate = {
         ...req.body,
-        point,
+        point: point,
         bonus,
       };
       const newSale = {
@@ -89,6 +90,8 @@ module.exports.updateManySale = async (req, res, next) => {
         date_time: req.body.date_time ? req.body.date_time : date_time,
         user_id,
       };
+      console.log(newSale)
+
       await updateRankUser(season_id, user_id, newSale, listRank, "update");
 
       await Sale.update(
@@ -99,6 +102,7 @@ module.exports.updateManySale = async (req, res, next) => {
           date_time: req.body.date_time
             ? getTimeExactly(req.body.date_time)
             : date_time,
+            bonusTask:req.body.bonusTask
         },
         {
           where: {
@@ -233,7 +237,7 @@ module.exports.searchSales = async (req, res, next) => {
       offset: offset,
       attributes: { exclude: ["user_id", "season_id"] },
       include,
-      order:[["createdAt","DESC"]]
+      order: [["createdAt", "DESC"]],
     });
 
     const totalPages = Math.ceil(totalSales / limit);
@@ -318,8 +322,8 @@ const caculatorPoint = (amount, target_day) => {
   let bonus = 0;
   let point = 0;
   if (amount > target_day) {
-    bonus = Math.round(((amount - target_day)/1000000)) * 2 ;
-    point = Math.round(amount / 1000000) + bonus;
+    bonus = Math.round((amount - target_day) / 1000000) * 2;
+    point = Math.round(amount / 1000000);
   }
   // Thấp hơn bị trừ
   else if (amount < target_day) {
@@ -371,18 +375,22 @@ const updateRankUser = async (
   );
   for (let i = 0; i < listSale.length; i++) {
     const exactlyRank = listRank.find((i) => i.order == rank);
-    const { point: exactlyPoint, bonus } = caculatorPoint(
+    const { point: pointSale, bonus } = caculatorPoint(
       listSale[i].amount,
       exactlyRank.target_day
     );
 
+    // Tong diem
+    const exactlyPoint = pointSale + bonus + listSale[i].bonusTask;
+    const oldTotalPoint =
+      listSale[i].point + listSale[i].bonus + listSale[i].bonusTask;
     // Nghĩa là rank đã thay đổi , ảnh hưởng đến point vì target_day thay đổi
-    if (exactlyPoint != listSale[i].point) {
-      listUpdatePoint.push({ ...listSale[i], point: exactlyPoint, bonus });
+    if (exactlyPoint != oldTotalPoint) {
+      listUpdatePoint.push({ ...listSale[i], point: pointSale, bonus });
       point += exactlyPoint;
       // point += listSale[i].point;
     } else {
-      point += listSale[i].point;
+      point += oldTotalPoint;
     }
 
     if (point >= 100) {
@@ -391,17 +399,8 @@ const updateRankUser = async (
       if (!listSale[i + 1]) {
         break;
       } else {
-        const { point: exactlyPoint, bonus } = caculatorPoint(
-          listSale[i + 1].amount,
-          exactlyRank.target_day
-        );
-        if (exactlyPoint != listSale[i + 1].point) {
-          listUpdatePoint.push({
-            ...listSale[i + 1],
-            point: exactlyPoint,
-            bonus,
-          });
-        }
+        addListUpdateRank(listSale[i+1],exactlyRank,listUpdatePoint)
+       
         if (!checkCompletedTarget(listSale[i + 1].amount, listRank, rank)) {
           point = 75;
           i += 1;
@@ -413,17 +412,8 @@ const updateRankUser = async (
         // point += listSale[i + 1].point;
         break;
       } else {
-        const { point: exactlyPoint, bonus } = caculatorPoint(
-          listSale[i + 2].amount,
-          exactlyRank.target_day
-        );
-        if (exactlyPoint != listSale[i + 2].point) {
-          listUpdatePoint.push({
-            ...listSale[i + 2],
-            point: exactlyPoint,
-            bonus,
-          });
-        }
+        addListUpdateRank(listSale[i+2],exactlyRank,listUpdatePoint)
+        
         if (!checkCompletedTarget(listSale[i + 2].amount, listRank, rank)) {
           point = 75;
           i += 2;
@@ -434,17 +424,8 @@ const updateRankUser = async (
         // point += listSale[i + 2].point;
         break;
       } else {
-        const { point: exactlyPoint, bonus } = caculatorPoint(
-          listSale[i + 3].amount,
-          exactlyRank.target_day
-        );
-        if (exactlyPoint != listSale[i + 3].point) {
-          listUpdatePoint.push({
-            ...listSale[i + 3],
-            point: exactlyPoint,
-            bonus,
-          });
-        }
+        addListUpdateRank(listSale[i+3],exactlyPoint,listUpdatePoint)
+       
         if (!checkCompletedTarget(listSale[i + 3].amount, listRank, rank)) {
           point = 75;
           i += 3;
@@ -496,6 +477,7 @@ const updateRankUser = async (
     if (indexSale >= 0) {
       newSale.point = listUpdatePoint[indexSale].point;
       newSale.bonus = listUpdatePoint[indexSale].bonus;
+      newSale.bonusTask = listUpdatePoint[indexSale].bonusTask;
       listUpdatePoint = [
         ...listUpdatePoint.slice(0, indexSale),
         ...listUpdatePoint.slice(indexSale + 1),
@@ -508,10 +490,12 @@ const updateRankUser = async (
     const idUpdate = listUpdatePoint[i].id;
     const pointUpdate = listUpdatePoint[i].point;
     const bonusUpdate = listUpdatePoint[i].bonus;
+    const bonusTaskUpdate = listUpdatePoint[i].bonusTask;
     await Sale.update(
       {
         point: pointUpdate,
         bonus: bonusUpdate,
+        bonusTask:bonusTaskUpdate
       },
       {
         where: {
@@ -519,6 +503,21 @@ const updateRankUser = async (
         },
       }
     );
+  }
+};
+
+// add List Update
+const addListUpdateRank = (saleItem, exactlyRank, listUpdatePoint) => {
+  const { point: pointSale, bonus } = caculatorPoint(
+    saleItem.amount,
+    exactlyRank.target_day
+  );
+  const exactlyPoint = pointSale + bonus + saleItem.bonusTask;
+  const oldTotalPoint = saleItem.point + saleItem.bonus + saleItem.bonusTask;
+  // Nghĩa là rank đã thay đổi , ảnh hưởng đến point vì target_day thay đổi
+  if (exactlyPoint != oldTotalPoint) {
+    listUpdatePoint.push({ ...saleItem, point: pointSale, bonus, bonusTask:saleItem.bonusTask });
+   
   }
 };
 // checkCompleted target

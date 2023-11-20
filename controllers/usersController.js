@@ -381,6 +381,7 @@ module.exports.getListUsers = async (req, res, next) => {
 };
 module.exports.getDetailUser = async (req, res, next) => {
 	const user_id = req.params.id || ''
+	console.log(user_id)
 	try {
 		const dateToday = new Date(moment(now()).format(FORMAT_DATE.YYYYMMDD));
 		const currentUser = await User.findOne({
@@ -446,8 +447,9 @@ module.exports.getDetailUser = async (req, res, next) => {
 			let totalBonus = null;
 			if (currentSeason) {
 				const listSaleInCurrentSeason = currentUser.sales.filter(s => s.season_id === (currentSeason.id || undefined))
-				const listPointsInCurrentSeason = listSaleInCurrentSeason.map(s => s.point);
-				const listBonusInCurrentSeason = listSaleInCurrentSeason.map(s => s.bonus);
+				const listPointsInCurrentSeason = listSaleInCurrentSeason.map(s => s.point + s.bonus + s.bonusTask);
+				const listBonusInCurrentSeason = listSaleInCurrentSeason.map(s => s.bonus + s.bonusTask);
+				
 				totalPoint = listPointsInCurrentSeason.reduce((accumulator, currentValue) => accumulator + currentValue, 0);
 				totalBonus = listBonusInCurrentSeason.reduce((accumulator, currentValue) => accumulator + currentValue, 0);
 			}
