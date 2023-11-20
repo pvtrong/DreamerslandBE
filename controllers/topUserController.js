@@ -141,15 +141,16 @@ const handleAdd = (data) => {
     const userId = item.user.id;
     if (!result[userId]) {
       result[userId] = item;
-      result[userId].totalPoint = result[userId].point;
-      result[userId].point = result[userId].point - result[userId].bonus;
+      result[userId].totalPoint = result[userId].point + result[userId].bonus + result[userId].bonusTask;
+      result[userId].point = result[userId].point,
+      result[userId].bonus  =  result[userId].bonus + result[userId].bonusTask
     } else {
       result[userId] = {
         ...result[userId],
         amount: result[userId].amount + item.amount,
-        point: result[userId].point + (item.point - item.bonus),
-        bonus: result[userId].bonus + item.bonus,
-        totalPoint: result[userId].totalPoint + item.point,
+        point: result[userId].point + item.point ,
+        bonus: result[userId].bonus + item.bonus + item.bonusTask,
+        totalPoint: result[userId].totalPoint + item.point + item.bonus + item.bonusTask,
       };
     }
   });
