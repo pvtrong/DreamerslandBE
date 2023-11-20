@@ -23,6 +23,11 @@ module.exports.SaleModel = (sequelize) => {
 				type: DataTypes.DOUBLE,
 				allowNull: false,
 			},
+			bonusTask: {
+				type: DataTypes.DOUBLE,
+				allowNull: false,
+				defaultValue:0
+			},
 			date_time: {
 				type: DataTypes.DATE,
 				allowNull: false,
