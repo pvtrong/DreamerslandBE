@@ -341,6 +341,7 @@ module.exports.getListUsers = async (req, res, next) => {
 			...queryCount,
 			limit: Number(limit),
 			offset: limit * (page - 1),
+			order: [['createdAt', 'DESC']],
 		});
 		allUsers.forEach(item => {
 			delete item.dataValues.roles;
