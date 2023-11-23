@@ -56,7 +56,6 @@ module.exports.signUp = async (req, res, next) => {
 			avatar_url: avatar_url,
 		}
 		if (user) {
-			console.log("🚀 ~ file: usersController.js:50 ~ module.exports.signUp= ~ user:", user)
 			user.first_name = first_name;
 			user.last_name = last_name;
 			user.email = email;
