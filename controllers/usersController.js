@@ -40,18 +40,12 @@ module.exports.signUp = async (req, res, next) => {
 
 		const token = crypto.randomBytes(16).toString('hex');
 
-		const record = await User.create({
-			first_name: first_name,
-			last_name: last_name,
-			email: email,
-			phone_number: phone_number,
-			password: password,
-			token: token,
-			bio: bio,
-			nickname: nickname,
-			avatar_url: avatar_url,
+		const user = await User.findOne({
+			where: {
+				phone_number: req.body.phone_number,
+				deleted_at: { [Op.ne]: null },
+			},
 		});
-		const resUserVerify = await this.signUpVerifyImmediate(token);
 		const resSignUp = {
 			first_name: first_name,
 			last_name: last_name,
@@ -61,16 +55,48 @@ module.exports.signUp = async (req, res, next) => {
 			nickname: nickname,
 			avatar_url: avatar_url,
 		}
-		const roleUser = await Role.create({
-			role_id: ROLE.NORMAL_USER,
-			user_id: record.id,
-		});
-		return res.json({
-			status: 'success',
-			result: {
-				record: resUserVerify ? resSignUp : resUserVerify
-			},
-		});
+		if (user) {
+			user.first_name = first_name;
+			user.last_name = last_name;
+			user.email = email;
+			user.phone_number = phone_number;
+			user.password = password;
+			user.bio = bio;
+			user.nickname = nickname;
+			user.avatar_url = avatar_url;
+			user.deleted_at = null;
+			user.save();
+			return res.json({
+				status: 'success',
+				result: {
+					record: user ? resSignUp : user
+				},
+			});
+		}
+		else {
+			const record = await User.create({
+				first_name: first_name,
+				last_name: last_name,
+				email: email,
+				phone_number: phone_number,
+				password: password,
+				token: token,
+				bio: bio,
+				nickname: nickname,
+				avatar_url: avatar_url,
+			});
+			const resUserVerify = await this.signUpVerifyImmediate(token);
+			const roleUser = await Role.create({
+				role_id: ROLE.NORMAL_USER,
+				user_id: record.id,
+			});
+			return res.json({
+				status: 'success',
+				result: {
+					record: resUserVerify ? resSignUp : resUserVerify
+				},
+			});
+		}
 	} catch (err) {
 		return next(err);
 	}
@@ -450,7 +476,7 @@ module.exports.getDetailUser = async (req, res, next) => {
 				const listSaleInCurrentSeason = currentUser.sales.filter(s => s.season_id === (currentSeason.id || undefined))
 				const listPointsInCurrentSeason = listSaleInCurrentSeason.map(s => s.point + s.bonus + s.bonusTask);
 				const listBonusInCurrentSeason = listSaleInCurrentSeason.map(s => s.bonus + s.bonusTask);
-				
+
 				totalPoint = listPointsInCurrentSeason.reduce((accumulator, currentValue) => accumulator + currentValue, 0);
 				totalBonus = listBonusInCurrentSeason.reduce((accumulator, currentValue) => accumulator + currentValue, 0);
 			}

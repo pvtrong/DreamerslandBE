@@ -53,6 +53,7 @@ module.exports.isUserExistsSignup = async (req, res, next) => {
 		const user = await User.findOne({
 			where: {
 				phone_number: req.body.phone_number,
+				deleted_at: { [Op.eq]: null },
 			},
 		});
 
